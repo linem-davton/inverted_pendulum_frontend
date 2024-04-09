@@ -37,7 +37,10 @@ function drawCart(ctx, x, angle) {
   const wheelRadius = 5;
   const groundHeight = 100;
 
-  x = 150 + x % (ctx.canvas.width); // Wrap around the canvas
+  x = 150 + x % (ctx.canvas.width);
+  if (Math.abs(x) > ctx.canvas.width / 2) {
+    x = x % (ctx.canvas.width)
+  }// Wrap around the canvas
   ctx.fillStyle = '#2c3e50';
   ctx.fillRect(x - cartWidth / 2, groundHeight - cartHeight, cartWidth, cartHeight); // Cart body
   ctx.beginPath();

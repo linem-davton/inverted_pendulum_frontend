@@ -56,6 +56,7 @@ function App() {
       body: JSON.stringify({ "reset": true })
     })
       .then(response => {
+        setLogData([]);
         intervalId = setInterval(fetchData, fetchDuration)
       })
       .catch(error => {
