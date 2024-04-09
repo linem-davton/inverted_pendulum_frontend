@@ -1,22 +1,28 @@
 import { useState, useEffect } from 'react';
 import Slider from '@mui/material/Slider';
 import Box from '@mui/material/Box';
-import Stack from '@mui/material/Stack'; ``
+import Stack from '@mui/material/Stack';
+import config from '../config.json';
+
+const serverUrl = config.serverUrl;
 
 function ControllerSliders() {
   const [kp, setKp] = useState(0.5); // Initial Kp value
   const [ki, setKi] = useState(0.0);
   const [kd, setKd] = useState(0.05);
+  const [ref, setRef] = useState(0.0);
+  const [delay, setDelay] = useState(0.0);
+  const [jitter, setJitter] = useState(0.0);
 
   const [kpRange, setKpRange] = useState([0.01, 10]);
   const [kiRange, setKiRange] = useState([0.01, 10]);
   const [kdRange, setKdRange] = useState([0.01, 10]);
 
-  const handleSliderChange = (name, value) => {
+  const handleSliderChange = (name: string, value: any) => {
     let min, max;
     switch (name) {
       case 'kp':
-        setKp(oldvalue => {
+        setKp(() => {
           if (value > 0.95 * kpRange[1] || value < 2 * kpRange[0]) {
             min = Math.round((value / 5 + Number.EPSILON) * 100) / 100
             max = Math.round((value * 5 + Number.EPSILON) * 100) / 100
@@ -27,7 +33,7 @@ function ControllerSliders() {
         });
         break;
       case 'ki':
-        setKi(oldvalue => {
+        setKi(() => {
           if (value > 0.95 * kiRange[1] || value < 2 * kiRange[0]) {
             min = Math.round((value / 5 + Number.EPSILON) * 100) / 100
             max = Math.round((value * 5 + Number.EPSILON) * 100) / 100
@@ -37,7 +43,7 @@ function ControllerSliders() {
         });
         break;
       case 'kd':
-        setKd(oldvalue => {
+        setKd(() => {
           if (value > 0.95 * kdRange[1] || value < 2 * kdRange[0]) {
             min = Math.round((value / 5 + Number.EPSILON) * 100) / 100
             max = Math.round((value * 5 + Number.EPSILON) * 100) / 100
@@ -47,11 +53,26 @@ function ControllerSliders() {
 
         });
         break;
+      case 'ref':
+        setRef(() => {
+          return Math.round((value + Number.EPSILON) * 100) / 100;
+        });
+        break;
+      case 'delay':
+        setDelay(() => {
+          return Math.round((value + Number.EPSILON) * 100) / 100;
+        });
+        break;
+      case 'jitter':
+        setJitter(() => {
+          return Math.round((value + Number.EPSILON) * 100) / 100;
+        });
+        break;
       default: break;
     }
   };
   useEffect(() => {
-    fetch('http://127.0.0.1:8080/pid', {
+    fetch(`${serverUrl}/pid`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ "kp": kp, "ki": ki, "kd": kd })
@@ -64,6 +85,20 @@ function ControllerSliders() {
       });
   }, [kp, ki, kd]);
 
+  useEffect(() => {
+    fetch(`${serverUrl}/params`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ "ref": ref, "delay": delay })
+    })
+      .then(response => {
+        console.log(response);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+  }, [ref, delay, jitter]);
+
   return (
     <div className='sliders'>
       <Box sx={{
@@ -73,21 +108,39 @@ function ControllerSliders() {
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
           <span>Kp: {kp}</span>
           <Slider value={kp} min={kpRange[0]} max={kpRange[1]} step={(kpRange[1] - kpRange[0]) / 100} color="secondary"
-            onChange={(event, newValue) => handleSliderChange('kp', newValue)} />
+            onChange={(_event, newValue) => handleSliderChange('kp', newValue)} />
           <span>{kpRange[1]}</span>
         </Stack>
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
           <span>Ki: {ki}</span>
           <Slider value={ki} min={kiRange[0]} max={kiRange[1]} step={0.01} color="secondary"
 
-            onChange={(event, newValue) => handleSliderChange('ki', newValue)} />
+            onChange={(_event, newValue) => handleSliderChange('ki', newValue)} />
           <span>{kiRange[1]}</span>
         </Stack>
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
           <span>Kd: {kd}</span>
           <Slider value={kd} min={kdRange[0]} max={kdRange[1]} step={0.01} color="secondary"
-            onChange={(event, newValue) => handleSliderChange('kd', newValue)} />     {/* ...Similar sliders for Ki and Kd ... */}
+            onChange={(_event, newValue) => handleSliderChange('kd', newValue)} />
           <span>{kdRange[1]}</span>
+        </Stack>
+        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
+          <span>Reference: {ref}</span>
+          <Slider value={ref} min={-3.14} max={3.14} step={0.01} color="secondary"
+            onChange={(_event, newValue) => handleSliderChange('ref', newValue)} />
+          <span>3.14</span>
+        </Stack>
+        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
+          <span>Delay(μs): {delay}</span>
+          <Slider value={delay} min={0} max={10000} step={10} color="secondary"
+            onChange={(_event, newValue) => handleSliderChange('delay', newValue)} />
+          <span>100,000</span>
+        </Stack>
+        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
+          <span>Jitter(μs): {jitter}</span>
+          <Slider value={jitter} min={0} max={5000} step={10} color="secondary"
+            onChange={(_event, newValue) => handleSliderChange('jitter', newValue)} />
+          <span>5000</span>
         </Stack>
       </Box>
     </div >

@@ -1,21 +1,18 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
-export function CartPendulum({ cartPosition, pendulumAngle }) {
-  const canvasRef = useRef(null);
+export function CartPendulum({ cartPosition, pendulumAngle }: { cartPosition: number, pendulumAngle: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d', { antialias: true });
-    ctx.imageSmoothingEnabled = false;  // Turn on for smoother scaling
-
+    const ctx = canvas?.getContext('2d', { antialias: true }) as CanvasRenderingContext2D;
     const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous frame
+      ctx?.clearRect(0, 0, canvas?.width || 0, canvas?.height || 0); // Clear previous frame
 
       drawCart(ctx, cartPosition, pendulumAngle)
       //drawPendulum(ctx, cartPosition, pendulumAngle);
     };
-
-    let animationId;
+    let animationId: number;
     const animate = () => {
       render();
       animationId = requestAnimationFrame(animate);
@@ -30,8 +27,9 @@ export function CartPendulum({ cartPosition, pendulumAngle }) {
   );
 }
 
+
 // Helper functions for drawing
-function drawCart(ctx, x, angle) {
+function drawCart(ctx: CanvasRenderingContext2D, x: number, angle: number) {
   const cartWidth = 50;
   const cartHeight = 20;
   const wheelRadius = 5;
@@ -51,7 +49,7 @@ function drawCart(ctx, x, angle) {
   drawPendulum(ctx, x, angle); // Draw the pendulum
 }
 
-function drawPendulum(ctx, cartX, angle) {
+function drawPendulum(ctx: CanvasRenderingContext2D, cartX: number, angle: number) {
   const pendulumLength = 45; // Example length
   const pivotX = cartX;
   const groundHeight = 100;

@@ -6,19 +6,28 @@ import { ThemeProvider } from '@mui/material/styles';
 import CartPendulum from './components/CartPendulum'
 import Charts from './components/Charts'
 import ControllerSliders from './components/Slider'
-//import Charts from './components/Charts'
+import config from './config.json'
 
-let intervalId;
+let intervalId: number;
+const serverUrl = config.serverUrl;
+
+interface LogEntry {
+  time: number;
+  x: number;
+  theta: number;
+  force: number;
+  theta_dot_dot: number;
+}
 
 function App() {
   const [simData, setSimData] = useState({ time: 0, cartPosition: 100, pendulumAngle: 0 });
-  const [logData, setLogData] = useState([]);
+  const [logData, setLogData] = useState<LogEntry[]>([]);
   const [paused, setPaused] = useState(true);
   const [start, setStart] = useState(false);
   const fetchDuration = 100;
 
   const fetchData = () => {
-    fetch('http://127.0.0.1:8080/sim')
+    fetch(`${serverUrl}/sim`)
       .then(res => res.json())
       .then(data => {
         setSimData({ time: data.time, cartPosition: data.x, pendulumAngle: data.theta });
@@ -30,10 +39,10 @@ function App() {
 
   useEffect(() => {
     console.log("Intervalid :", intervalId);
-    fetch('http://127.0.0.1:8080/status')
+    fetch(`${serverUrl}/status`)
       .then(res => res.json())
       .then(data => {
-        setStart(value => {
+        setStart(() => {
           setPaused(data.pause)
           if (data.start && !data.pause) {
             intervalId = setInterval(fetchData, fetchDuration);
@@ -50,12 +59,12 @@ function App() {
   const restartSimulation = () => {
     clearInterval(intervalId);
     setLogData([]);
-    fetch('http://127.0.0.1:8080/reset', {
+    fetch(`${serverUrl}/reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ "reset": true })
     })
-      .then(response => {
+      .then(() => {
         setLogData([]);
         intervalId = setInterval(fetchData, fetchDuration)
       })
@@ -64,12 +73,12 @@ function App() {
       });
   }
   const startStopSimulation = () => {
-    fetch('http://127.0.0.1:8080/startstop', {
+    fetch(`${serverUrl}/startstop`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ "start": paused })
     })
-      .then(response => {
+      .then(() => {
         setPaused(pause => {
           if (!pause) {
             clearInterval(intervalId);
@@ -87,13 +96,13 @@ function App() {
       });
   }
   const startSimulation = () => {
-    fetch('http://127.0.0.1:8080/startstop', {
+    fetch(`${serverUrl}/startstop`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ "start": true })
     })
-      .then(response => {
-        setStart(value => {
+      .then(() => {
+        setStart(() => {
           setPaused(pause => !pause);
           intervalId = setInterval(fetchData, fetchDuration)
           console.log('Interval Started with ID:', intervalId)
@@ -137,21 +146,6 @@ const simTheme = createTheme({
     secondary: {
       main: '#9b59b6',
     },
-    highlight: {
-      main: '#ff9800', // Orange highlight
-    },
-    neutral: {
-      main: '#f0f0f0', // Light gray
-    },
-    breakpoints: {
-      values: {
-        xs: 0,
-        sm: 600,
-        md: 900,
-        lg: 1200,
-        xl: 1536,
-      }
-    }
   }
 });
 
