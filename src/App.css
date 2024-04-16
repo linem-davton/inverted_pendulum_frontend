@@ -29,7 +29,7 @@
 .sliders {
   display: flex;
   width: 100%;
-  margin-top: 50px;
+  margin-top: 20px;
   align-items: space-between;
   justify-content: center;
 }

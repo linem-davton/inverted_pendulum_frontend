@@ -3,13 +3,15 @@ import Slider from '@mui/material/Slider';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import config from '../config.json';
+import Button from '@mui/material/Button';
+
 
 const serverUrl = config.serverUrl;
 
 function ControllerSliders() {
   const [kp, setKp] = useState(0.5); // Initial Kp value
   const [ki, setKi] = useState(0.0);
-  const [kd, setKd] = useState(0.05);
+  const [kd, setKd] = useState(2);
   const [ref, setRef] = useState(0.0);
   const [delay, setDelay] = useState(0.0);
   const [jitter, setJitter] = useState(0.0);
@@ -89,7 +91,7 @@ function ControllerSliders() {
     fetch(`${serverUrl}/params`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ "ref": ref, "delay": delay })
+      body: JSON.stringify({ "ref": ref, "delay": delay, "jitter": jitter })
     })
       .then(response => {
         console.log(response);
@@ -99,10 +101,18 @@ function ControllerSliders() {
       });
   }, [ref, delay, jitter]);
 
+  const resetSlider = () => {
+    setKp(0.5);
+    setKi(0.0);
+    setKd(2);
+    setRef(0.0);
+    setDelay(0.0);
+    setJitter(0.0);
+  };
   return (
     <div className='sliders'>
       <Box sx={{
-        width: 600
+        width: 700
       }}>
 
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
@@ -143,6 +153,7 @@ function ControllerSliders() {
           <span>5000</span>
         </Stack>
       </Box>
+      <Button variant="contained" sx={{ margin: '30px' }} onClick={resetSlider}>Reset</Button>
     </div >
 
   );

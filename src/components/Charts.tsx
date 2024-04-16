@@ -10,10 +10,10 @@ function Charts(logData: any) {
 
   return (
     <>
-      <Typography variant="h4" gutterBottom>
-        <h4>Time Series Charts</h4>
+      <Typography variant="h5" gutterBottom>
+        <h5>Time Series Charts</h5>
       </Typography>
-      <LineChart width={800} height={300} data={logData.logData}>
+      <LineChart width={1000} height={300} data={logData.logData}>
         <XAxis dataKey="time" type="number" domain={[minTime, maxTime]} label={{ value: 'Time', position: 'insideBottom' }} >
         </XAxis>
         <YAxis yAxisId="left" type="number" label={{ value: 'Position', position: 'insideLeft', angle: -90 }}> {/* Default Y-axis */}
@@ -24,7 +24,7 @@ function Charts(logData: any) {
         <Line yAxisId="left" type="monotone" dataKey="x" stroke="#2c3e50" />
         <Line yAxisId="right" type="monotone" dataKey="theta" stroke="#c0392b" />
       </LineChart >
-      <LineChart width={800} height={300} data={logData.logData}>
+      <LineChart width={1000} height={300} data={logData.logData}>
         <XAxis dataKey="time" type="number" domain={[minTime, maxTime]} label={{ value: 'Time', position: 'insideBottom' }}>
         </XAxis>
         <YAxis yAxisId="left" type="number" label={{ value: 'Force', position: 'insideLeft', angle: -90 }}> {/* Default Y-axis */}

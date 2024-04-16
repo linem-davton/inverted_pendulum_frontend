@@ -20,7 +20,7 @@ interface LogEntry {
 }
 
 function App() {
-  const [simData, setSimData] = useState({ time: 0, cartPosition: 100, pendulumAngle: 0 });
+  const [simData, setSimData] = useState({ time: 0, cartPosition: 100, pendulumAngle: 0.75 });
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [paused, setPaused] = useState(true);
   const [start, setStart] = useState(false);
@@ -129,9 +129,9 @@ function App() {
           <ControllerSliders />
           <div className="controls">
             {start ? <>
-              <Button variant="contained" sx={{ margin: '10px' }} onClick={restartSimulation}>Restart Simulation</Button>
-              <Button variant="contained" sx={{ margin: '10px' }} onClick={startStopSimulation}>{paused ? "Continue" : "Pause"}</Button> </>
-              : <Button variant="contained" sx={{ margin: '10px' }} onClick={startSimulation}>Start</Button>}
+              <Button variant="contained" size="large" sx={{ margin: '10px', minWidth: 180 }} onClick={restartSimulation}>Restart Simulation</Button>
+              <Button variant="contained" size="large" sx={{ margin: '10px', minWidth: 180 }} onClick={startStopSimulation}>{paused ? "Continue" : "Pause"}</Button> </>
+              : <Button variant="contained" size="large" sx={{ margin: '10px' }} onClick={startSimulation}>Start</Button>}
           </div>
         </div>
       </div>

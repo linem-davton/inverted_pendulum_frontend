@@ -1,30 +1,51 @@
-# React + TypeScript + Vite
+# Inverted Pendulum Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project is a React-based frontend for controlling an inverted pendulum simulation. It communicates with a backend server whose configuration is defined in `config.json`.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Start Simulation**: Allows starting the simulation in the backend server.
+- **Restart Simulation:** Allows restarting the simulation.
+- **Pause/Continue:** Enables pausing or continuing the simulation as needed.
+- **Reset Parameters:** Resets the parameters of the simulation.
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## Prerequisites
 
-- Configure the top-level `parserOptions` property like this:
+- Node.js installed on your machine
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+## Release Version
+
+Release 1.0 can be downloaded from the [releases page](https://github.com/linem-davton/inverted_pendulum_frontend/releases/tag/v1.0.0).
+The release includes a pre-built version of the frontend.
+To use the frontend, simply extract the contents of the release archive and run a web server, e.g 
+
+```BASH
+npm install serve
+serve
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+Make sure the backend server is running as well.
+
+### Development
+
+1. Clone this repository.
+2. Navigate to the project directory.
+3. Install dependencies using npm:
+
+```bash
+npm install
+
+```
+
+4. Ensure the backend server defined in `config.json` is running.
+5. Start the development server:
+
+```BASH
+npm run dev
+```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
