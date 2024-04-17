@@ -24,6 +24,7 @@ To use the frontend, simply extract the contents of the release archive and run 
 ```BASH
 npm install serve
 serve
+# or npm run dev
 ```
 
 Make sure the backend server is running as well.
