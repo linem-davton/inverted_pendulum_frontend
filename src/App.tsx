@@ -24,7 +24,7 @@ function App() {
   const [logData, setLogData] = useState<LogEntry[]>([]);
   const [paused, setPaused] = useState(true);
   const [start, setStart] = useState(false);
-  const fetchDuration = 100;
+  const [fetchDuration, setFetchDuration] = useState(100);
 
   const fetchData = () => {
     fetch(`${serverUrl}/sim`)
@@ -115,6 +115,15 @@ function App() {
       });
 
   }
+  const handlefetchDuration = () => {
+    const duration = prompt('Enter the fetch duration in milliseconds:', `${fetchDuration}`);
+    clearInterval(intervalId);
+    if (start && !paused) {
+      intervalId = setInterval(fetchData, duration);
+    }
+    setFetchDuration(Number(duration));
+
+  }
 
   return (
     <ThemeProvider theme={simTheme}>
@@ -132,6 +141,7 @@ function App() {
               <Button variant="contained" size="large" sx={{ margin: '10px', minWidth: 180 }} onClick={restartSimulation}>Restart Simulation</Button>
               <Button variant="contained" size="large" sx={{ margin: '10px', minWidth: 180 }} onClick={startStopSimulation}>{paused ? "Continue" : "Pause"}</Button> </>
               : <Button variant="contained" size="large" sx={{ margin: '10px' }} onClick={startSimulation}>Start</Button>}
+            <Button variant="contained" size="large" sx={{ margin: '10px', minWidth: 180 }} onClick={handlefetchDuration}>Fetch Interval</Button>
           </div>
         </div>
       </div>
