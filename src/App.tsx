@@ -3,6 +3,9 @@ import './App.css'
 import Button from '@mui/material/Button';
 import { createTheme } from '@mui/material/styles';
 import { ThemeProvider } from '@mui/material/styles';
+import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
+import Container from '@mui/material/Container';
 import CartPendulum from './components/CartPendulum'
 import Charts from './components/Charts'
 import ControllerSliders from './components/Slider'
@@ -119,7 +122,7 @@ function App() {
     const duration = prompt('Enter the fetch duration in milliseconds:', `${fetchDuration}`);
     clearInterval(intervalId);
     if (start && !paused) {
-      intervalId = setInterval(fetchData, duration);
+      intervalId = setInterval(fetchData, Number(duration));
     }
     setFetchDuration(Number(duration));
 
@@ -143,9 +146,19 @@ function App() {
               : <Button variant="contained" size="large" sx={{ margin: '10px' }} onClick={startSimulation}>Start</Button>}
             <Button variant="contained" size="large" sx={{ margin: '10px', minWidth: 180 }} onClick={handlefetchDuration}>Fetch Interval</Button>
           </div>
+          <footer style={{ backgroundColor: '#f0f0f0', padding: '20px 0', marginTop: 'auto' }}>
+            <Container maxWidth="sm">
+              <Typography variant="body1" align="center">
+                <Link href="https://github.com/linem-davton/inverted_pendulum_frontend" underline="hover" sx={{ padding: '20px' }} target="_blank" rel="noopener noreferrer">GitHub Frontend</Link>
+                <Link href="https://github.com/linem-davton/es-lab-task1" underline="hover" sx={{ padding: '20px' }} target="_blank" rel="noopener noreferrer">GitHub Backend</Link>
+                <Link href="https://eslab1docs.pages.dev/" underline="hover" sx={{ padding: '20px' }} target="_blank" rel="noopener noreferrer">Task Documentation </Link>
+              </Typography>
+            </Container>
+          </footer>
         </div>
       </div>
-    </ThemeProvider>
+
+    </ThemeProvider >
   )
 }
 const simTheme = createTheme({
@@ -158,6 +171,7 @@ const simTheme = createTheme({
     },
   }
 });
+
 
 
 export default App
