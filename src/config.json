@@ -1,3 +1,4 @@
 {
-  "serverUrl": "/submit/eslab/estask1/proxy"
+  "remoteServer": "/submit/eslab/estask1/proxy",
+  "localServer": "http://localhost:8000"
 }

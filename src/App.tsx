@@ -6,13 +6,15 @@ import { ThemeProvider } from "@mui/material/styles";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import CartPendulum from "./components/CartPendulum";
 import Charts from "./components/Charts";
 import ControllerSliders from "./components/Slider";
 import config from "./config.json";
 
 let intervalId: number;
-const serverUrl = config.serverUrl;
+let serverUrl = config.localServer;
 
 interface LogEntry {
   time: number;
@@ -32,6 +34,13 @@ function App() {
   const [paused, setPaused] = useState(true);
   const [start, setStart] = useState(false);
   const [fetchDuration, setFetchDuration] = useState(300);
+  const [server, setServer] = useState("remote");
+  if (server === "remote") {
+    serverUrl = config.remoteServer;
+  }
+  if (server === "local") {
+    serverUrl = config.localServer;
+  }
 
   const fetchData = () => {
     fetch(`${serverUrl}/sim`)
@@ -59,6 +68,8 @@ function App() {
 
   useEffect(() => {
     console.log("Intervalid :", intervalId);
+    const server_status = localStorage.getItem("serverUrl") || "remote";
+    setServer(server_status);
     fetch(`${serverUrl}/status`)
       .then((res) => res.json())
       .then((data) => {
@@ -76,6 +87,10 @@ function App() {
       clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("serverUrl", server);
+  }, [server]);
 
   const restartSimulation = () => {
     clearInterval(intervalId);
@@ -162,7 +177,7 @@ function App() {
           ) : (
             <div>Loading chart data...</div>
           )}
-          <ControllerSliders />
+          <ControllerSliders server={server} />
           <div className="controls">
             {start ? (
               <>
@@ -201,6 +216,19 @@ function App() {
             >
               Fetch Interval
             </Button>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={server === "remote" ? true : false}
+                  onChange={() => {
+                    setServer(server === "remote" ? "local" : "remote");
+                  }}
+                  name="serverSwitch"
+                  color="primary"
+                />
+              }
+              label={`${server} server`}
+            />
           </div>
           <footer
             style={{
