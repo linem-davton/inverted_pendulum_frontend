@@ -34,7 +34,9 @@ function App() {
   const [paused, setPaused] = useState(true);
   const [start, setStart] = useState(false);
   const [fetchDuration, setFetchDuration] = useState(300);
-  const [server, setServer] = useState("remote");
+  const [server, setServer] = useState(
+    localStorage.getItem("serverUrl") || "remote",
+  );
   if (server === "remote") {
     serverUrl = config.remoteServer;
   }
@@ -68,8 +70,6 @@ function App() {
 
   useEffect(() => {
     console.log("Intervalid :", intervalId);
-    const server_status = localStorage.getItem("serverUrl") || "remote";
-    setServer(server_status);
     fetch(`${serverUrl}/status`)
       .then((res) => res.json())
       .then((data) => {
