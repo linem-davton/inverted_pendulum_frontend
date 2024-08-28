@@ -117,7 +117,8 @@ function ControllerSliders({ server }: { server: string }) {
     <div className="sliders">
       <Box
         sx={{
-          width: 700,
+          width: "100%",
+          maxWidth: "700px",
         }}
       >
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">

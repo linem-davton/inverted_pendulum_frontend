@@ -176,7 +176,10 @@ function App() {
             {logData.length > 0 ? (
               <Charts logData={logData} />
             ) : (
-              <div>Loading chart data...</div>
+              <div style={{ margin: "auto", fontSize: "2rem" }}>
+                {" "}
+                Start/resume simulation...
+              </div>
             )}
           </div>
           <div className="controlPanel">
@@ -228,49 +231,42 @@ function App() {
                     }}
                     name="serverSwitch"
                     color="primary"
+                    style={{ color: "white" }}
                   />
                 }
                 label={`${server} server`}
+                style={{ color: "white", margin: "auto" }}
               />
             </div>
           </div>
-          <footer
-            style={{
-              padding: "20px 0",
-              marginTop: "2rem",
-            }}
-          >
-            <Container maxWidth="sm">
-              <Typography variant="body1" align="center">
-                <Link
-                  href="https://github.com/linem-davton/inverted_pendulum_frontend"
-                  underline="hover"
-                  sx={{ padding: "20px", color: "white" }}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  GitHub Frontend
-                </Link>
-                <Link
-                  href="https://github.com/linem-davton/es-lab-task1"
-                  underline="hover"
-                  sx={{ padding: "20px", color: "white" }}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  GitHub Backend
-                </Link>
-                <Link
-                  href="https://eslab1docs.pages.dev/"
-                  underline="hover"
-                  sx={{ padding: "20px", color: "white" }}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Task Documentation
-                </Link>
-              </Typography>
-            </Container>
+          <footer>
+            <Link
+              href="https://github.com/linem-davton/inverted_pendulum_frontend"
+              underline="hover"
+              sx={{ padding: "20px", color: "white" }}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub Frontend
+            </Link>
+            <Link
+              href="https://github.com/linem-davton/es-lab-task1"
+              underline="hover"
+              sx={{ padding: "20px", color: "white" }}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub Backend
+            </Link>
+            <Link
+              href="https://eslab1docs.pages.dev/"
+              underline="hover"
+              sx={{ padding: "20px", color: "white" }}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Task Documentation
+            </Link>
           </footer>
         </div>
       </div>

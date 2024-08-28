@@ -1,7 +1,7 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: "Times New Roman", Times, serif;
+  height: auto;
   background-color: hsla(220, 13%, 18%, 1);
   color: #fff;
 }
@@ -26,6 +26,7 @@ body {
   scrollbar-width: thin; /* "auto" or "thin" */
   scrollbar-color: #555 #2e2e2e; /* thumb and track color */
 }
+
 .container {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -48,43 +49,91 @@ body {
 }
 
 .chartContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1.5fr 1fr;
+  gap: 3rem;
+  align-items: flex-start;
   justify-content: center;
 }
 .charts {
+  width: 100%;
+  height: 100%;
+  padding-top: 2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: space-betwen;
+  justify-content: flex-end;
 }
 .controlPanel {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 3fr 1fr;
-  align-items: center;
+  grid-template-rows: 2fr 1fr;
   justify-content: flex-start;
   width: 100%;
-  margin-top: 20px;
-  overflow: auto;
 }
 .sliders {
   display: flex;
   align-items: space-between;
   justify-content: center;
+  gap: 2rem;
 }
 .controls {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: row;
-  align-items: space-between; /* Center items vertically */
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
   justify-content: center; /* Space items evenly */
+}
+footer {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+  text-decoration: underline;
 }
 
 @media (max-width: 1024px) {
   /* Adjust breakpoint as needed for your "phone" definition */
+  .body {
+    font-size: 0.8em;
+  }
   .container {
+    max-width: 100vw;
+    height: 100vw;
     grid-template-columns: 1fr; /* Make the grid full-width */
-    grid-template-rows: 2fr 1fr; /* Make the grid full-height */
+    grid-template-rows: 1fr 2fr; /* Make the grid full-height */
+    overflow-x: hidden;
+  }
+  .cartpendulum {
+    max-width: 100vw;
+  }
+  .chartContainer {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 2fr;
+    gap: 0;
+  }
+  .charts {
+    padding-top: 0;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-x: auto;
+  }
+  .controlPanel {
+    align-items: flex-start;
+    max-width: 100vw;
+  }
+  .sliders {
+    flex-direction: column;
+    padding: 0 1rem;
+    gap: 0;
+  }
+  .controls {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    justify-content: center; /* Space items evenly */
+  }
+  footer {
+    flex-direction: column;
+    align-items: center;
   }
 }
