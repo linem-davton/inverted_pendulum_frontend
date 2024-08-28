@@ -171,70 +171,73 @@ function App() {
             pendulumAngle={simData.pendulumAngle}
           />
         </div>
-        <div className="charts">
-          {logData.length > 0 ? (
-            <Charts logData={logData} />
-          ) : (
-            <div>Loading chart data...</div>
-          )}
-          <ControllerSliders server={server} />
-          <div className="controls">
-            {start ? (
-              <>
-                <Button
-                  variant="contained"
-                  size="large"
-                  sx={{ margin: "10px", minWidth: 180 }}
-                  onClick={restartSimulation}
-                >
-                  Restart Simulation
-                </Button>
-                <Button
-                  variant="contained"
-                  size="large"
-                  sx={{ margin: "10px", minWidth: 180 }}
-                  onClick={startStopSimulation}
-                >
-                  {paused ? "Continue" : "Pause"}
-                </Button>{" "}
-              </>
+        <div className="chartContainer">
+          <div className="charts">
+            {logData.length > 0 ? (
+              <Charts logData={logData} />
             ) : (
+              <div>Loading chart data...</div>
+            )}
+          </div>
+          <div className="controlPanel">
+            <ControllerSliders server={server} />
+            <div className="controls">
+              {start ? (
+                <>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    sx={{ margin: "10px", minWidth: 180 }}
+                    onClick={restartSimulation}
+                  >
+                    Restart Simulation
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    sx={{ margin: "10px", minWidth: 180 }}
+                    onClick={startStopSimulation}
+                  >
+                    {paused ? "Continue" : "Pause"}
+                  </Button>{" "}
+                </>
+              ) : (
+                <Button
+                  variant="contained"
+                  size="large"
+                  sx={{ margin: "10px" }}
+                  onClick={startSimulation}
+                >
+                  Start
+                </Button>
+              )}
               <Button
                 variant="contained"
                 size="large"
-                sx={{ margin: "10px" }}
-                onClick={startSimulation}
+                sx={{ margin: "10px", minWidth: 180 }}
+                onClick={handlefetchDuration}
               >
-                Start
+                Fetch Interval
               </Button>
-            )}
-            <Button
-              variant="contained"
-              size="large"
-              sx={{ margin: "10px", minWidth: 180 }}
-              onClick={handlefetchDuration}
-            >
-              Fetch Interval
-            </Button>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={server === "remote" ? true : false}
-                  onChange={() => {
-                    setServer(server === "remote" ? "local" : "remote");
-                  }}
-                  name="serverSwitch"
-                  color="primary"
-                />
-              }
-              label={`${server} server`}
-            />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={server === "remote" ? true : false}
+                    onChange={() => {
+                      setServer(server === "remote" ? "local" : "remote");
+                    }}
+                    name="serverSwitch"
+                    color="primary"
+                  />
+                }
+                label={`${server} server`}
+              />
+            </div>
           </div>
           <footer
             style={{
-              backgroundColor: "#f0f0f0",
               padding: "20px 0",
-              marginTop: "auto",
+              marginTop: "2rem",
             }}
           >
             <Container maxWidth="sm">
@@ -242,7 +245,7 @@ function App() {
                 <Link
                   href="https://github.com/linem-davton/inverted_pendulum_frontend"
                   underline="hover"
-                  sx={{ padding: "20px" }}
+                  sx={{ padding: "20px", color: "white" }}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -251,7 +254,7 @@ function App() {
                 <Link
                   href="https://github.com/linem-davton/es-lab-task1"
                   underline="hover"
-                  sx={{ padding: "20px" }}
+                  sx={{ padding: "20px", color: "white" }}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -260,11 +263,11 @@ function App() {
                 <Link
                   href="https://eslab1docs.pages.dev/"
                   underline="hover"
-                  sx={{ padding: "20px" }}
+                  sx={{ padding: "20px", color: "white" }}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Task Documentation{" "}
+                  Task Documentation
                 </Link>
               </Typography>
             </Container>
@@ -277,7 +280,7 @@ function App() {
 const simTheme = createTheme({
   palette: {
     primary: {
-      main: "#2c3e50",
+      main: "hsla(90, 10%, 30%, 0.8)",
     },
     secondary: {
       main: "#9b59b6",
