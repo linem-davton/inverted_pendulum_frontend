@@ -65,6 +65,7 @@ function Charts(logData: any) {
             dataKey="time"
             type="number"
             domain={[minTime, maxTime]}
+            label={{ value: "Time", position: "insideBottom", fill: axisColor }}
             stroke={axisColor}
           ></XAxis>
           <YAxis yAxisId="left" type="number" stroke={forceAxisColor}>
