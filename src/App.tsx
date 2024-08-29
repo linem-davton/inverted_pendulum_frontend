@@ -4,8 +4,6 @@ import Button from "@mui/material/Button";
 import { createTheme } from "@mui/material/styles";
 import { ThemeProvider } from "@mui/material/styles";
 import Link from "@mui/material/Link";
-import Typography from "@mui/material/Typography";
-import Container from "@mui/material/Container";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import CartPendulum from "./components/CartPendulum";

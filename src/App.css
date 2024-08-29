@@ -120,6 +120,7 @@ footer {
   }
   .controlPanel {
     align-items: flex-start;
+    grid-template-rows: 1fr 1fr;
     max-width: 100vw;
   }
   .sliders {

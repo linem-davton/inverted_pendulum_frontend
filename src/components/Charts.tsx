@@ -24,7 +24,7 @@ function Charts(logData: any) {
       <Typography variant="h5" fontFamily="serif" sx={{ margin: "1rem auto" }}>
         Cart-Pendulum System
       </Typography>
-      <ResponsiveContainer width="90%" aspect={3}>
+      <ResponsiveContainer width="95%" aspect={3}>
         <LineChart width={900} height={300} data={logData.logData}>
           <XAxis
             dataKey="time"
@@ -33,29 +33,13 @@ function Charts(logData: any) {
             label={{ value: "Time", position: "insideBottom", fill: axisColor }}
             stroke={axisColor}
           ></XAxis>
-          <YAxis
-            yAxisId="left"
-            type="number"
-            label={{
-              value: "Position",
-              position: "insideLeft",
-              angle: -90,
-              fill: forceAxisColor,
-            }}
-            stroke={forceAxisColor}
-          >
+          <YAxis yAxisId="left" type="number" stroke={forceAxisColor}>
             {/* Default Y-axis */}
           </YAxis>
           <YAxis
             yAxisId="right"
             type="number"
             orientation="right"
-            label={{
-              value: "theta",
-              position: "insideRight",
-              angle: -90,
-              fill: thetaAxisColor,
-            }}
             stroke={thetaAxisColor}
           />
           {/* Y-axis on the right side */}
@@ -75,42 +59,21 @@ function Charts(logData: any) {
           />
         </LineChart>
       </ResponsiveContainer>
-      <ResponsiveContainer width="90%" aspect={3}>
+      <ResponsiveContainer width="95%" aspect={3}>
         <LineChart width={900} height={300} data={logData.logData}>
           <XAxis
             dataKey="time"
             type="number"
             domain={[minTime, maxTime]}
-            label={{
-              value: "Time",
-              position: "insideBottom",
-              fill: axisColor,
-            }}
             stroke={axisColor}
           ></XAxis>
-          <YAxis
-            yAxisId="left"
-            type="number"
-            label={{
-              value: "Force",
-              position: "insideLeft",
-              angle: -90,
-              fill: forceAxisColor,
-            }}
-            stroke={forceAxisColor}
-          >
+          <YAxis yAxisId="left" type="number" stroke={forceAxisColor}>
             {/* Default Y-axis */}
           </YAxis>
           <YAxis
             yAxisId="right"
             type="number"
             orientation="right"
-            label={{
-              value: "theta",
-              position: "insideRight",
-              angle: -90,
-              fill: thetaAxisColor,
-            }}
             stroke={thetaAxisColor}
           />
           {/* Y-axis on the right side */}
