@@ -220,24 +220,24 @@ function App() {
               >
                 Fetch Interval
               </Button>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={server === "remote" ? true : false}
-                    onChange={() => {
-                      setServer(server === "remote" ? "local" : "remote");
-                    }}
-                    name="serverSwitch"
-                    color="primary"
-                    style={{ color: "white" }}
-                  />
-                }
-                label={`${server} server`}
-                style={{ color: "white", margin: "auto" }}
-              />
             </div>
           </div>
           <footer>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={server === "remote" ? true : false}
+                  onChange={() => {
+                    setServer(server === "remote" ? "local" : "remote");
+                  }}
+                  name="serverSwitch"
+                  color="primary"
+                  style={{ color: "white" }}
+                />
+              }
+              label={`${server} server`}
+              style={{ color: "white" }}
+            />
             <Link
               href="https://github.com/linem-davton/inverted_pendulum_frontend"
               underline="hover"
