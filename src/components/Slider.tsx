@@ -28,16 +28,15 @@ function ControllerSliders({ server }: { server: string }) {
 
   const handleSliderChange = (name: string, value: any) => {
     let min, max;
-    
+
     switch (name) {
       case "kp":
         setKp(() => {
-
           if (value > 0.95 * kpRange[1] || value < 2 * kpRange[0]) {
             min = Math.round((value / 5 + Number.EPSILON) * 100) / 100;
             max = Math.round((value * 5 + Number.EPSILON) * 100) / 100;
 
-            if (max < 10){
+            if (max < 10) {
               max = 10;
             }
 
@@ -52,8 +51,8 @@ function ControllerSliders({ server }: { server: string }) {
           if (value > 0.95 * kiRange[1] || value < 2 * kiRange[0]) {
             min = Math.round((value / 5 + Number.EPSILON) * 100) / 100;
             max = Math.round((value * 5 + Number.EPSILON) * 100) / 100;
-            
-            if (max < 10){
+
+            if (max < 10) {
               max = 10;
             }
 
@@ -68,7 +67,7 @@ function ControllerSliders({ server }: { server: string }) {
             min = Math.round((value / 5 + Number.EPSILON) * 100) / 100;
             max = Math.round((value * 5 + Number.EPSILON) * 100) / 100;
 
-            if (max < 10){
+            if (max < 10) {
               max = 10;
             }
 
@@ -141,7 +140,7 @@ function ControllerSliders({ server }: { server: string }) {
         }}
       >
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Kp: {kp}</span>
+          <span>Kp: 0</span>
           <Slider
             value={kp}
             min={kpRange[0]}
@@ -154,8 +153,17 @@ function ControllerSliders({ server }: { server: string }) {
           <TextField
             value={kp}
             onChange={(e) => {
-              const newValue = parseFloat(e.target.value);
-              if (!isNaN(newValue) && newValue >= 0 && newValue <= Infinity) {
+              const input = e.target.value;
+
+              // Allow empty input
+              if (input === "") {
+                handleSliderChange("kp", 0); // or maybe: set kp to ""
+                return;
+              }
+
+              const newValue = parseFloat(input);
+
+              if (!isNaN(newValue) && newValue >= 0) {
                 handleSliderChange("kp", newValue);
               }
             }}
@@ -169,7 +177,7 @@ function ControllerSliders({ server }: { server: string }) {
           />
         </Stack>
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Ki: {ki}</span>
+          <span>Ki: 0</span>
           <Slider
             value={ki}
             min={kiRange[0]}
@@ -182,8 +190,15 @@ function ControllerSliders({ server }: { server: string }) {
           <TextField
             value={ki}
             onChange={(e) => {
-              const newValue = parseFloat(e.target.value);
-              if (!isNaN(newValue) && newValue >= 0 && newValue <= Infinity) {
+              const input = e.target.value;
+
+              if (input === "") {
+                handleSliderChange("ki", 0); // or "" if you want the field to be truly empty
+                return;
+              }
+
+              const newValue = parseFloat(input);
+              if (!isNaN(newValue) && newValue >= 0) {
                 handleSliderChange("ki", newValue);
               }
             }}
@@ -197,7 +212,7 @@ function ControllerSliders({ server }: { server: string }) {
           />
         </Stack>
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Kd: {kd}</span>
+          <span>Kd: 0</span>
           <Slider
             value={kd}
             min={kdRange[0]}
@@ -210,8 +225,15 @@ function ControllerSliders({ server }: { server: string }) {
           <TextField
             value={kd}
             onChange={(e) => {
-              const newValue = parseFloat(e.target.value);
-              if (!isNaN(newValue) && newValue >= 0 && newValue <= Infinity) {
+              const input = e.target.value;
+
+              if (input === "") {
+                handleSliderChange("kd", 0); // or "" if desired
+                return;
+              }
+
+              const newValue = parseFloat(input);
+              if (!isNaN(newValue) && newValue >= 0) {
                 handleSliderChange("kd", newValue);
               }
             }}
@@ -225,7 +247,7 @@ function ControllerSliders({ server }: { server: string }) {
           />
         </Stack>
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Reference: {ref}</span>
+          <span>Reference: -3.14</span>
           <Slider
             value={ref}
             min={-3.14}
@@ -238,7 +260,14 @@ function ControllerSliders({ server }: { server: string }) {
           <TextField
             value={ref}
             onChange={(e) => {
-              const newValue = parseFloat(e.target.value);
+              const input = e.target.value;
+
+              if (input === "") {
+                handleSliderChange("ref", 0); // or keep it "" if you want the field to be empty
+                return;
+              }
+
+              const newValue = parseFloat(input);
               if (!isNaN(newValue) && newValue >= -3.14 && newValue <= 3.14) {
                 handleSliderChange("ref", newValue);
               }
@@ -253,7 +282,7 @@ function ControllerSliders({ server }: { server: string }) {
           />
         </Stack>
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Delay(μs): {delay}</span>
+          <span>Delay(μs): 0</span>
           <Slider
             value={delay}
             min={0}
@@ -268,7 +297,14 @@ function ControllerSliders({ server }: { server: string }) {
           <TextField
             value={delay}
             onChange={(e) => {
-              const newValue = parseFloat(e.target.value);
+              const input = e.target.value;
+
+              if (input === "") {
+                handleSliderChange("delay", 0); // or "" if you want to show empty
+                return;
+              }
+
+              const newValue = parseFloat(input);
               if (!isNaN(newValue) && newValue >= 0 && newValue <= 10000) {
                 handleSliderChange("delay", newValue);
               }
@@ -283,7 +319,7 @@ function ControllerSliders({ server }: { server: string }) {
           />
         </Stack>
         <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Jitter(μs): {jitter}</span>
+          <span>Jitter(μs): 0</span>
           <Slider
             value={jitter}
             min={0}
@@ -298,7 +334,14 @@ function ControllerSliders({ server }: { server: string }) {
           <TextField
             value={jitter}
             onChange={(e) => {
-              const newValue = parseFloat(e.target.value);
+              const input = e.target.value;
+
+              if (input === "") {
+                handleSliderChange("jitter", 0); // or "" if you prefer showing empty
+                return;
+              }
+
+              const newValue = parseFloat(input);
               if (!isNaN(newValue) && newValue >= 0 && newValue <= 5000) {
                 handleSliderChange("jitter", newValue);
               }
