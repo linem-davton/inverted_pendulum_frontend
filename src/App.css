@@ -144,3 +144,19 @@ footer {
     align-items: center;
   }
 }
+
+.MuiInputBase-input {
+  color: white !important; /* Ensure text color is white */
+}
+
+.MuiOutlinedInput-root fieldset {
+  border-color: #9b59b6 !important; /* Ensure border color is white */
+}
+
+.MuiOutlinedInput-root:hover fieldset {
+  border-color: #555 !important; /* Ensure border color stays white on hover */
+}
+
+.MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: #555 !important; /* Ensure border color stays white when focused */
+}
