@@ -63,11 +63,12 @@ function App() {
         ]);
         setPaused(data.pause);
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error(err);
+      });
   };
 
   useEffect(() => {
-    console.log("Intervalid :", intervalId);
     fetch(`${serverUrl}/status`)
       .then((res) => res.json())
       .then((data) => {
@@ -98,11 +99,15 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reset: true }),
     })
-      .then(() => {
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
         setLogData([]);
         intervalId = setInterval(fetchData, fetchDuration);
       })
       .catch((error) => {
+        alert("Error: Make sure server is running");
         console.error("Error:", error);
       });
   };
@@ -135,7 +140,10 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ start: true }),
     })
-      .then(() => {
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
         setStart(() => {
           setPaused((pause) => !pause);
           intervalId = setInterval(fetchData, fetchDuration);
@@ -144,8 +152,8 @@ function App() {
         });
       })
       .catch((error) => {
-        console.error("Error:", error);
-        alert("Error " + error);
+        alert("Error: Make sure server is running");
+        console.error(error);
       });
   };
   const handlefetchDuration = () => {
