@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
-const cartColor = "hsla(180, 30%, 30%, 1)";
-const pendulumColor = "hsla(30, 70%, 60%, 1)";
+const cartColor = "#59d3ff";
+const pendulumColor = "#ff9a4d";
 
 export function CartPendulum({
   cartPosition,

@@ -1,18 +1,23 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import Button from "@mui/material/Button";
-import { createTheme } from "@mui/material/styles";
-import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import Link from "@mui/material/Link";
-import Switch from "@mui/material/Switch";
-import FormControlLabel from "@mui/material/FormControlLabel";
+import { ThemeProvider } from "@mui/material/styles";
 import CartPendulum from "./components/CartPendulum";
-import Charts from "./components/Charts";
+import Charts, {
+  MIN_TELEMETRY_BADGE_SAMPLES,
+  TelemetryStatus,
+} from "./components/Charts";
 import ControllerSliders from "./components/Slider";
 import config from "./config.json";
+import appTheme from "./theme";
 
 let intervalId: number;
 let serverUrl = config.localServer;
+const MAX_LOG_POINTS = 1200;
+const MIN_FETCH_DURATION = 50;
+const MAX_FETCH_DURATION = 1000;
 
 interface LogEntry {
   time: number;
@@ -20,6 +25,10 @@ interface LogEntry {
   theta: number;
   force: number;
   theta_dot_dot: number;
+}
+
+function formatMetric(value: number, digits = 2) {
+  return Number.isFinite(value) ? value.toFixed(digits) : "—";
 }
 
 function App() {
@@ -32,9 +41,11 @@ function App() {
   const [paused, setPaused] = useState(true);
   const [start, setStart] = useState(false);
   const [fetchDuration, setFetchDuration] = useState(300);
+  const [fetchDurationInput, setFetchDurationInput] = useState("300");
   const [server, setServer] = useState(
     localStorage.getItem("serverUrl") || "remote",
   );
+
   if (server === "remote") {
     serverUrl = config.remoteServer;
   }
@@ -60,7 +71,7 @@ function App() {
             force: data.force,
             theta_dot_dot: data.theta_dot_dot,
           },
-        ]);
+        ].slice(-MAX_LOG_POINTS));
         setPaused(data.pause);
       })
       .catch((err) => {
@@ -91,6 +102,10 @@ function App() {
     localStorage.setItem("serverUrl", server);
   }, [server]);
 
+  useEffect(() => {
+    setFetchDurationInput(String(fetchDuration));
+  }, [fetchDuration]);
+
   const restartSimulation = () => {
     clearInterval(intervalId);
     setLogData([]);
@@ -111,6 +126,7 @@ function App() {
         console.error("Error:", error);
       });
   };
+
   const startStopSimulation = () => {
     fetch(`${serverUrl}/startstop`, {
       method: "POST",
@@ -134,6 +150,7 @@ function App() {
         console.error("Error:", error);
       });
   };
+
   const startSimulation = () => {
     fetch(`${serverUrl}/startstop`, {
       method: "POST",
@@ -156,138 +173,254 @@ function App() {
         console.error(error);
       });
   };
-  const handlefetchDuration = () => {
-    const duration = prompt(
-      "Enter the fetch duration in milliseconds:",
-      `${fetchDuration}`,
-    );
-    clearInterval(intervalId);
-    if (start && !paused) {
-      intervalId = setInterval(fetchData, Number(duration));
+
+  const parsedFetchDuration = Number(fetchDurationInput.trim());
+
+  const applyFetchDuration = () => {
+    if (fetchDurationInput.trim() === "" || !Number.isFinite(parsedFetchDuration)) {
+      setFetchDurationInput(String(fetchDuration));
+      return;
     }
-    setFetchDuration(Number(duration));
+
+    const nextDuration = Math.min(
+      MAX_FETCH_DURATION,
+      Math.max(MIN_FETCH_DURATION, Math.round(parsedFetchDuration)),
+    );
+
+    clearInterval(intervalId);
+
+    if (start && !paused) {
+      intervalId = setInterval(fetchData, nextDuration);
+    }
+
+    setFetchDuration(nextDuration);
+    setFetchDurationInput(String(nextDuration));
   };
 
+  const latestLog = logData.length > 0 ? logData[logData.length - 1] : null;
+  const hasTelemetryStatus = logData.length >= MIN_TELEMETRY_BADGE_SAMPLES;
+  const statusTone = !start ? "idle" : paused ? "paused" : "live";
+  const statusLabel = !start
+    ? "Idle"
+    : paused
+      ? "Paused"
+      : "Live";
+  const connectionLabel = server === "remote" ? "Remote" : "Local";
+  const projectLinks = [
+    {
+      label: "Frontend",
+      href: "https://github.com/linem-davton/inverted_pendulum_frontend",
+    },
+    {
+      label: "Backend",
+      href: "https://github.com/linem-davton/es-lab-task1",
+    },
+    {
+      label: "Docs",
+      href: "https://eslab.es.eti.uni-siegen.de/eslab1/docs/index.html",
+    },
+  ];
+  const docsLink = projectLinks.find((link) => link.label === "Docs");
+  const referenceLinks = projectLinks.filter((link) => link.label !== "Docs");
+
+  const metrics = [
+    {
+      label: "Simulation time",
+      value: formatMetric(simData.time, 2),
+      unit: "s",
+      tone: "secondary",
+    },
+    {
+      label: "Cart position",
+      value: formatMetric(simData.cartPosition, 3),
+      unit: "",
+      tone: "secondary",
+    },
+    {
+      label: "Pendulum angle",
+      value: formatMetric(simData.pendulumAngle, 3),
+      unit: "rad",
+      tone: "primary",
+    },
+    {
+      label: "Control force",
+      value: formatMetric(latestLog?.force ?? 0, 3),
+      unit: "",
+      tone: "primary",
+    },
+  ];
+
   return (
-    <ThemeProvider theme={simTheme}>
-      <div className="container">
-        <div className="cartpendulum">
-          <CartPendulum
-            cartPosition={simData.cartPosition}
-            pendulumAngle={simData.pendulumAngle}
-          />
-        </div>
-        <div className="chartContainer">
-          <div className="charts">
-            {logData.length > 0 ? (
-              <Charts logData={logData} />
-            ) : (
-              <div style={{ margin: "auto", fontSize: "2rem" }}>
-                {" "}
-                Start/resume simulation...
-              </div>
-            )}
-          </div>
-          <div className="controlPanel">
-            <ControllerSliders server={server} />
-            <div className="controls">
-              {start ? (
-                <>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    sx={{ margin: "10px", minWidth: 180 }}
-                    onClick={restartSimulation}
-                  >
-                    Restart Simulation
-                  </Button>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    sx={{ margin: "10px", minWidth: 180 }}
-                    onClick={startStopSimulation}
-                  >
-                    {paused ? "Continue" : "Pause"}
-                  </Button>{" "}
-                </>
-              ) : (
-                <Button
-                  variant="contained"
-                  size="large"
-                  sx={{ margin: "10px" }}
-                  onClick={startSimulation}
-                >
-                  Start
-                </Button>
-              )}
-              <Button
-                variant="contained"
-                size="large"
-                sx={{ margin: "10px", minWidth: 180 }}
-                onClick={handlefetchDuration}
-              >
-                Fetch Interval
-              </Button>
-            </div>
-          </div>
-          <footer>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={server === "remote" ? true : false}
-                  onChange={() => {
+    <ThemeProvider theme={appTheme}>
+      <CssBaseline />
+      <div className="appShell">
+        <header className="topBar topBar--utilityOnly">
+          <section className="topBarUtilities topBarUtilities--compact">
+            <div className="consoleToolbar">
+              <div className="consoleToolbarMain">
+                <span className={`statusPill statusPill--${statusTone}`}>
+                  {statusLabel}
+                </span>
+                <button
+                  type="button"
+                  className={`toolbarAction toolbarAction--toggle ${
+                    server === "local" ? "toolbarAction--active" : ""
+                  }`}
+                  onClick={() => {
                     setServer(server === "remote" ? "local" : "remote");
                   }}
-                  name="serverSwitch"
-                  color="primary"
-                  style={{ color: "white" }}
-                />
-              }
-              label={`${server} server`}
-              style={{ color: "white" }}
-            />
-            <Link
-              href="https://github.com/linem-davton/inverted_pendulum_frontend"
-              underline="hover"
-              sx={{ padding: "20px", color: "white" }}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub Frontend
-            </Link>
-            <Link
-              href="https://github.com/linem-davton/es-lab-task1"
-              underline="hover"
-              sx={{ padding: "20px", color: "white" }}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub Backend
-            </Link>
-            <Link
-              href="https://eslab1docs.pages.dev/"
-              underline="hover"
-              sx={{ padding: "20px", color: "white" }}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Task Documentation
-            </Link>
-          </footer>
-        </div>
+                  aria-pressed={server === "local"}
+                >
+                  {connectionLabel}
+                </button>
+                <label className="toolbarField">
+                  <input
+                    className="toolbarInput"
+                    type="number"
+                    min={MIN_FETCH_DURATION}
+                    max={MAX_FETCH_DURATION}
+                    step={10}
+                    value={fetchDurationInput}
+                    onChange={(event) => {
+                      setFetchDurationInput(event.target.value);
+                    }}
+                    onBlur={applyFetchDuration}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        applyFetchDuration();
+                      }
+                    }}
+                    aria-label="Polling interval in milliseconds"
+                  />
+                  <span className="toolbarInputUnit">ms</span>
+                </label>
+              </div>
+              <nav className="consoleToolbarLinks" aria-label="Project links">
+                <div className="consoleToolbarReferences">
+                  {referenceLinks.map((link) => (
+                    <Link
+                      key={link.label}
+                      className="toolbarLink toolbarLink--reference"
+                      href={link.href}
+                      underline="none"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+                {docsLink ? (
+                  <Link
+                    className="toolbarLink toolbarLink--docs"
+                    href={docsLink.href}
+                    underline="hover"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {docsLink.label}
+                  </Link>
+                ) : null}
+              </nav>
+            </div>
+          </section>
+        </header>
+
+        <main className="dashboardLayout">
+          <section className="stageDeck">
+            <section className="stageCard stageCard--tight">
+              <div className="sectionHeading sectionHeading--tight">
+                <div>
+                  <h2 className="sectionTitle">Simulation</h2>
+                </div>
+              </div>
+
+              <div className="stageViewport">
+                <div className="cartpendulum">
+                  <CartPendulum
+                    cartPosition={simData.cartPosition}
+                    pendulumAngle={simData.pendulumAngle}
+                  />
+                </div>
+              </div>
+
+              <div className="metricStrip">
+                {metrics.map((metric) => (
+                  <article
+                    key={metric.label}
+                    className={`metricCard metricCard--${metric.tone}`}
+                  >
+                    <span className="metricLabel">{metric.label}</span>
+                    <div className="metricValueRow">
+                      <strong className="metricValue">{metric.value}</strong>
+                      {metric.unit ? (
+                        <span className="metricUnit">{metric.unit}</span>
+                      ) : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="telemetryDeck telemetryDeck--inline">
+              <Charts logData={logData} />
+            </section>
+          </section>
+
+          <aside className="operatorRail">
+            <section className="operatorCard operatorCard--session">
+              <div className="operatorHeader">
+                <span className="eyebrow">Session control</span>
+              </div>
+
+              <div className={`actionStack ${start ? "actionStack--dual" : ""}`}>
+                {start ? (
+                  <>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color={paused ? "primary" : "secondary"}
+                      size="large"
+                      onClick={startStopSimulation}
+                    >
+                      {paused ? "Continue Simulation" : "Pause Simulation"}
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="large"
+                      onClick={restartSimulation}
+                    >
+                      Restart Run
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    size="large"
+                    onClick={startSimulation}
+                  >
+                    Start Simulation
+                  </Button>
+                )}
+              </div>
+            </section>
+
+            <section className="operatorCard operatorCard--tall">
+              <ControllerSliders server={server} />
+            </section>
+          </aside>
+        </main>
+
+        {hasTelemetryStatus ? (
+          <section className="telemetryFooter">
+            <TelemetryStatus logData={logData} />
+          </section>
+        ) : null}
       </div>
     </ThemeProvider>
   );
 }
-const simTheme = createTheme({
-  palette: {
-    primary: {
-      main: "hsla(90, 10%, 30%, 0.8)",
-    },
-    secondary: {
-      main: "#9b59b6",
-    },
-  },
-});
 
 export default App;

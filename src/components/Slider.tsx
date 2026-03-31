@@ -1,105 +1,164 @@
-import { useState, useEffect } from "react";
-import Slider from "@mui/material/Slider";
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import config from "../config.json";
+import { useEffect, useState } from "react";
 import Button from "@mui/material/Button";
+import Slider from "@mui/material/Slider";
 import TextField from "@mui/material/TextField";
+import config from "../config.json";
 
-let serverUrl: string = config.localServer;
+const defaults = {
+  kp: 0.5,
+  ki: 0,
+  kd: 2,
+  ref: 0,
+  delay: 0,
+  jitter: 0,
+};
+
+type ControllerState = typeof defaults;
+type ParamKey = keyof ControllerState;
+type PidKey = "kp" | "ki" | "kd";
+
+const pidKeys: PidKey[] = ["kp", "ki", "kd"];
+
+const pidMeta = {
+  kp: {
+    label: "Kp",
+    unit: "",
+    step: 0.01,
+    precision: 2,
+    tone: "secondary",
+  },
+  ki: {
+    label: "Ki",
+    unit: "",
+    step: 0.01,
+    precision: 2,
+    tone: "secondary",
+  },
+  kd: {
+    label: "Kd",
+    unit: "",
+    step: 0.01,
+    precision: 2,
+    tone: "secondary",
+  },
+} as const;
+
+const disturbanceMeta = {
+  ref: {
+    label: "Reference",
+    unit: "rad",
+    min: -3.14,
+    max: 3.14,
+    step: 0.01,
+    precision: 2,
+    tone: "primary",
+  },
+  delay: {
+    label: "Delay",
+    unit: "us",
+    min: 0,
+    max: 10000,
+    step: 10,
+    precision: 0,
+    tone: "secondary",
+  },
+  jitter: {
+    label: "Jitter",
+    unit: "us",
+    min: 0,
+    max: 5000,
+    step: 10,
+    precision: 0,
+    tone: "secondary",
+  },
+} as const;
+
+function roundValue(value: number, precision: number) {
+  return Number(value.toFixed(precision));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function formatValue(value: number, precision: number) {
+  return value.toFixed(precision);
+}
 
 function ControllerSliders({ server }: { server: string }) {
-  const [kp, setKp] = useState(0.5); // Initial Kp value
-  const [ki, setKi] = useState(0.0);
-  const [kd, setKd] = useState(2);
-  const [ref, setRef] = useState(0.0);
-  const [delay, setDelay] = useState(0.0);
-  const [jitter, setJitter] = useState(0.0);
+  const [controller, setController] = useState<ControllerState>(defaults);
+  const [pidRanges, setPidRanges] = useState<Record<PidKey, number>>({
+    kp: 10,
+    ki: 10,
+    kd: 10,
+  });
 
-  const [kpRange, setKpRange] = useState([0.01, 10]);
-  const [kiRange, setKiRange] = useState([0.01, 10]);
-  const [kdRange, setKdRange] = useState([0.01, 10]);
-  if (server === "remote") {
-    serverUrl = config.remoteServer;
-  }
-  if (server === "local") {
-    serverUrl = config.localServer;
-  }
+  const activeServerUrl =
+    server === "remote" ? config.remoteServer : config.localServer;
 
-  const handleSliderChange = (name: string, value: any) => {
-    let min, max;
+  const updatePidRange = (key: PidKey, value: number) => {
+    setPidRanges((prevRanges) => {
+      const currentMax = prevRanges[key];
+      let nextMax = currentMax;
 
-    switch (name) {
-      case "kp":
-        setKp(() => {
-          if (value > 0.95 * kpRange[1] || value < 2 * kpRange[0]) {
-            min = Math.round((value / 5 + Number.EPSILON) * 100) / 100;
-            max = Math.round((value * 5 + Number.EPSILON) * 100) / 100;
+      if (value >= currentMax * 0.95) {
+        nextMax = Math.max(roundValue(value * 5, 2), 10);
+      } else if (currentMax > 10 && value <= currentMax * 0.2) {
+        nextMax = Math.max(roundValue(Math.max(value, 2) * 5, 2), 10);
+      }
 
-            if (max < 10) {
-              max = 10;
-            }
+      if (nextMax === currentMax) {
+        return prevRanges;
+      }
 
-            setKpRange([min, max]);
-          }
+      return {
+        ...prevRanges,
+        [key]: nextMax,
+      };
+    });
+  };
 
-          return Math.round((value + Number.EPSILON) * 100) / 100;
-        });
-        break;
-      case "ki":
-        setKi(() => {
-          if (value > 0.95 * kiRange[1] || value < 2 * kiRange[0]) {
-            min = Math.round((value / 5 + Number.EPSILON) * 100) / 100;
-            max = Math.round((value * 5 + Number.EPSILON) * 100) / 100;
-
-            if (max < 10) {
-              max = 10;
-            }
-
-            setKiRange([min, max]);
-          }
-          return Math.round((value + Number.EPSILON) * 100) / 100;
-        });
-        break;
-      case "kd":
-        setKd(() => {
-          if (value > 0.95 * kdRange[1] || value < 2 * kdRange[0]) {
-            min = Math.round((value / 5 + Number.EPSILON) * 100) / 100;
-            max = Math.round((value * 5 + Number.EPSILON) * 100) / 100;
-
-            if (max < 10) {
-              max = 10;
-            }
-
-            setKdRange([min, max]);
-          }
-          return Math.round((value + Number.EPSILON) * 100) / 100;
-        });
-        break;
-      case "ref":
-        setRef(() => {
-          return Math.round((value + Number.EPSILON) * 100) / 100;
-        });
-        break;
-      case "delay":
-        setDelay(() => {
-          return Math.round((value + Number.EPSILON) * 100) / 100;
-        });
-        break;
-      case "jitter":
-        setJitter(() => {
-          return Math.round((value + Number.EPSILON) * 100) / 100;
-        });
-        break;
-      default:
-        break;
+  const updateParameter = (key: ParamKey, rawValue: number) => {
+    if (Number.isNaN(rawValue)) {
+      return;
     }
+
+    if (key in pidMeta) {
+      const pidKey = key as PidKey;
+      const nextValue = roundValue(
+        Math.max(rawValue, 0),
+        pidMeta[pidKey].precision,
+      );
+
+      updatePidRange(pidKey, nextValue);
+      setController((prev) => ({
+        ...prev,
+        [pidKey]: nextValue,
+      }));
+      return;
+    }
+
+    const meta = disturbanceMeta[key as keyof typeof disturbanceMeta];
+    const nextValue = roundValue(
+      clamp(rawValue, meta.min, meta.max),
+      meta.precision,
+    );
+
+    setController((prev) => ({
+      ...prev,
+      [key]: nextValue,
+    }));
   };
+
   useEffect(() => {
-    fetch(`${serverUrl}/pid`, {
+    fetch(`${activeServerUrl}/pid`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kp: kp, ki: ki, kd: kd }),
+      body: JSON.stringify({
+        kp: controller.kp,
+        ki: controller.ki,
+        kd: controller.kd,
+      }),
     })
       .then((response) => {
         console.log(response);
@@ -107,13 +166,17 @@ function ControllerSliders({ server }: { server: string }) {
       .catch((error) => {
         console.error("Error:", error);
       });
-  }, [kp, ki, kd]);
+  }, [activeServerUrl, controller.kd, controller.ki, controller.kp]);
 
   useEffect(() => {
-    fetch(`${serverUrl}/params`, {
+    fetch(`${activeServerUrl}/params`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ref: ref, delay: delay, jitter: jitter }),
+      body: JSON.stringify({
+        ref: controller.ref,
+        delay: controller.delay,
+        jitter: controller.jitter,
+      }),
     })
       .then((response) => {
         console.log(response);
@@ -121,244 +184,171 @@ function ControllerSliders({ server }: { server: string }) {
       .catch((error) => {
         console.error("Error:", error);
       });
-  }, [ref, delay, jitter]);
+  }, [activeServerUrl, controller.delay, controller.jitter, controller.ref]);
 
-  const resetSlider = () => {
-    setKp(0.5);
-    setKi(0.0);
-    setKd(2);
-    setRef(0.0);
-    setDelay(0.0);
-    setJitter(0.0);
+  const resetPid = () => {
+    setController((prev) => ({
+      ...prev,
+      kp: defaults.kp,
+      ki: defaults.ki,
+      kd: defaults.kd,
+    }));
+    setPidRanges({
+      kp: 10,
+      ki: 10,
+      kd: 10,
+    });
   };
+
+  const resetDisturbance = () => {
+    setController((prev) => ({
+      ...prev,
+      ref: defaults.ref,
+      delay: defaults.delay,
+      jitter: defaults.jitter,
+    }));
+  };
+
+  const renderParameterCard = (
+    key: ParamKey,
+    meta: {
+      label: string;
+      unit: string;
+      min: number;
+      max: number;
+      step: number;
+      precision: number;
+      tone: string;
+    },
+  ) => {
+    const value = controller[key];
+
+    return (
+      <article className={`parameterCard parameterCard--${meta.tone}`} key={key}>
+        <div className="parameterHeader">
+          <div className="parameterLabelRow">
+            <span
+              className={`parameterIcon parameterIcon--${String(key)}`}
+              aria-hidden="true"
+            />
+            <span className="parameterLabel">{meta.label}</span>
+          </div>
+          <div className="parameterReadout">
+            <strong className="parameterValue">
+              {formatValue(value, meta.precision)}
+            </strong>
+            {meta.unit ? <span className="parameterUnit">{meta.unit}</span> : null}
+          </div>
+        </div>
+
+        <div className="parameterBounds">
+          <span>min {formatValue(meta.min, meta.precision)}</span>
+          <span>max {formatValue(meta.max, meta.precision)}</span>
+        </div>
+
+        <div className="parameterControlRow">
+          <Slider
+            value={value}
+            min={meta.min}
+            max={meta.max}
+            step={meta.step}
+            color={meta.tone === "primary" ? "primary" : "secondary"}
+            onChange={(_event, newValue) => {
+              if (typeof newValue === "number") {
+                updateParameter(key, newValue);
+              }
+            }}
+          />
+          <TextField
+            size="small"
+            type="number"
+            value={value}
+            onChange={(event) => {
+              const input = event.target.value;
+
+              if (input === "") {
+                updateParameter(key, meta.min < 0 ? 0 : meta.min);
+                return;
+              }
+
+              updateParameter(key, Number(input));
+            }}
+            inputProps={{
+              step: meta.step,
+              min: meta.min,
+              max: meta.max,
+              inputMode: "decimal",
+            }}
+          />
+        </div>
+      </article>
+    );
+  };
+
   return (
-    <div className="sliders">
-      <Box
-        sx={{
-          width: "100%",
-          maxWidth: "700px",
-        }}
-      >
-        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Kp: 0</span>
-          <Slider
-            value={kp}
-            min={kpRange[0]}
-            max={kpRange[1]}
-            step={(kpRange[1] - kpRange[0]) / 100}
-            color="secondary"
-            onChange={(_event, newValue) => handleSliderChange("kp", newValue)}
-          />
-          <span>{kpRange[1]}</span>
-          <TextField
-            value={kp}
-            onChange={(e) => {
-              const input = e.target.value;
+    <div className="controlGroups">
+      <section className="controlGroup controlGroup--pid">
+        <div className="controlGroupHeader">
+          <div className="controlGroupHeading">
+            <span className="controlIcon controlIcon--pid" aria-hidden="true" />
+            <div>
+              <span className="eyebrow">PID</span>
+              <h3 className="controlGroupTitle">Gains</h3>
+            </div>
+          </div>
 
-              // Allow empty input
-              if (input === "") {
-                handleSliderChange("kp", 0); // or maybe: set kp to ""
-                return;
-              }
+          <div className="groupMeta">
+            <span className="stageBadge">/pid</span>
+          </div>
+        </div>
 
-              const newValue = parseFloat(input);
-
-              if (!isNaN(newValue) && newValue >= 0) {
-                handleSliderChange("kp", newValue);
-              }
-            }}
-            type="number"
-            inputProps={{
-              step: (kpRange[1] - kpRange[0]) / 100,
+        <div className="parameterGrid">
+          {pidKeys.map((key) =>
+            renderParameterCard(key, {
+              ...pidMeta[key],
               min: 0,
-              max: Infinity,
-            }}
-            sx={{ width: "200px" }}
-          />
-        </Stack>
-        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Ki: 0</span>
-          <Slider
-            value={ki}
-            min={kiRange[0]}
-            max={kiRange[1]}
-            step={0.01}
-            color="secondary"
-            onChange={(_event, newValue) => handleSliderChange("ki", newValue)}
-          />
-          <span>{kiRange[1]}</span>
-          <TextField
-            value={ki}
-            onChange={(e) => {
-              const input = e.target.value;
+              max: pidRanges[key],
+            }),
+          )}
+        </div>
 
-              if (input === "") {
-                handleSliderChange("ki", 0); // or "" if you want the field to be truly empty
-                return;
-              }
+        <div className="groupActionRow">
+          <Button variant="outlined" size="large" onClick={resetPid}>
+            Reset
+          </Button>
+        </div>
+      </section>
 
-              const newValue = parseFloat(input);
-              if (!isNaN(newValue) && newValue >= 0) {
-                handleSliderChange("ki", newValue);
-              }
-            }}
-            type="number"
-            inputProps={{
-              step: 0.01,
-              min: 0,
-              max: Infinity,
-            }}
-            sx={{ width: "200px" }}
-          />
-        </Stack>
-        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Kd: 0</span>
-          <Slider
-            value={kd}
-            min={kdRange[0]}
-            max={kdRange[1]}
-            step={0.01}
-            color="secondary"
-            onChange={(_event, newValue) => handleSliderChange("kd", newValue)}
-          />
-          <span>{kdRange[1]}</span>
-          <TextField
-            value={kd}
-            onChange={(e) => {
-              const input = e.target.value;
+      <section className="controlGroup controlGroup--disturbance">
+        <div className="controlGroupHeader">
+          <div className="controlGroupHeading">
+            <span
+              className="controlIcon controlIcon--disturbance"
+              aria-hidden="true"
+            />
+            <div>
+              <span className="eyebrow">Scenario</span>
+              <h3 className="controlGroupTitle">Ref + Timing</h3>
+            </div>
+          </div>
 
-              if (input === "") {
-                handleSliderChange("kd", 0); // or "" if desired
-                return;
-              }
+          <div className="groupMeta">
+            <span className="stageBadge">/params</span>
+          </div>
+        </div>
 
-              const newValue = parseFloat(input);
-              if (!isNaN(newValue) && newValue >= 0) {
-                handleSliderChange("kd", newValue);
-              }
-            }}
-            type="number"
-            inputProps={{
-              step: 0.01,
-              min: 0,
-              max: Infinity,
-            }}
-            sx={{ width: "200px" }}
-          />
-        </Stack>
-        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Reference: -3.14</span>
-          <Slider
-            value={ref}
-            min={-3.14}
-            max={3.14}
-            step={0.01}
-            color="secondary"
-            onChange={(_event, newValue) => handleSliderChange("ref", newValue)}
-          />
-          <span>3.14</span>
-          <TextField
-            value={ref}
-            onChange={(e) => {
-              const input = e.target.value;
+        <div className="parameterGrid">
+          {(
+            Object.keys(disturbanceMeta) as Array<keyof typeof disturbanceMeta>
+          ).map((key) => renderParameterCard(key, disturbanceMeta[key]))}
+        </div>
 
-              if (input === "") {
-                handleSliderChange("ref", 0); // or keep it "" if you want the field to be empty
-                return;
-              }
-
-              const newValue = parseFloat(input);
-              if (!isNaN(newValue) && newValue >= -3.14 && newValue <= 3.14) {
-                handleSliderChange("ref", newValue);
-              }
-            }}
-            type="number"
-            inputProps={{
-              step: 0.01,
-              min: -3.14,
-              max: 3.14,
-            }}
-            sx={{ width: "200px" }}
-          />
-        </Stack>
-        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Delay(μs): 0</span>
-          <Slider
-            value={delay}
-            min={0}
-            max={10000}
-            step={10}
-            color="secondary"
-            onChange={(_event, newValue) =>
-              handleSliderChange("delay", newValue)
-            }
-          />
-          <span>10,000</span>
-          <TextField
-            value={delay}
-            onChange={(e) => {
-              const input = e.target.value;
-
-              if (input === "") {
-                handleSliderChange("delay", 0); // or "" if you want to show empty
-                return;
-              }
-
-              const newValue = parseFloat(input);
-              if (!isNaN(newValue) && newValue >= 0 && newValue <= 10000) {
-                handleSliderChange("delay", newValue);
-              }
-            }}
-            type="number"
-            inputProps={{
-              step: 10,
-              min: 0,
-              max: 10000,
-            }}
-            sx={{ width: "200px" }}
-          />
-        </Stack>
-        <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-          <span>Jitter(μs): 0</span>
-          <Slider
-            value={jitter}
-            min={0}
-            max={5000}
-            step={10}
-            color="secondary"
-            onChange={(_event, newValue) =>
-              handleSliderChange("jitter", newValue)
-            }
-          />
-          <span>5000</span>
-          <TextField
-            value={jitter}
-            onChange={(e) => {
-              const input = e.target.value;
-
-              if (input === "") {
-                handleSliderChange("jitter", 0); // or "" if you prefer showing empty
-                return;
-              }
-
-              const newValue = parseFloat(input);
-              if (!isNaN(newValue) && newValue >= 0 && newValue <= 5000) {
-                handleSliderChange("jitter", newValue);
-              }
-            }}
-            type="number"
-            inputProps={{
-              step: 10,
-              min: 0,
-              max: 5000,
-            }}
-            sx={{ width: "200px" }}
-          />
-        </Stack>
-      </Box>
-      <Button variant="contained" sx={{ margin: "30px" }} onClick={resetSlider}>
-        Reset
-      </Button>
+        <div className="groupActionRow">
+          <Button variant="outlined" size="large" onClick={resetDisturbance}>
+            Reset
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }
