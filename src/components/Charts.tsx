@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -8,14 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-interface LogEntry {
-  time: number;
-  x: number;
-  theta: number;
-  force: number;
-  theta_dot_dot: number;
-}
+import type { LogEntry } from "../types/simulator";
 
 type TelemetryTone = "good" | "warn" | "danger" | "neutral";
 
@@ -309,15 +303,19 @@ function TelemetryBadgeRow({ logData }: { logData: LogEntry[] }) {
   );
 }
 
-export function TelemetryStatus({ logData }: { logData: LogEntry[] }) {
+export const TelemetryStatus = memo(function TelemetryStatus({
+  logData,
+}: {
+  logData: LogEntry[];
+}) {
   if (logData.length < MIN_TELEMETRY_BADGE_SAMPLES) {
     return null;
   }
 
   return <TelemetryBadgeRow logData={logData} />;
-}
+});
 
-function Charts({ logData }: ChartsProps) {
+const Charts = memo(function Charts({ logData }: ChartsProps) {
   if (logData.length === 0) {
     return (
       <article className="chartEmptyCard chartEmptyCard--minimal">
@@ -423,6 +421,7 @@ function Charts({ logData }: ChartsProps) {
                     stroke={chart.primaryColor}
                     strokeWidth={2.8}
                     strokeLinecap="round"
+                    isAnimationActive={false}
                     dot={false}
                     activeDot={{
                       r: 4,
@@ -440,6 +439,7 @@ function Charts({ logData }: ChartsProps) {
                       stroke={chart.secondaryColor}
                       strokeWidth={2.8}
                       strokeLinecap="round"
+                      isAnimationActive={false}
                       dot={false}
                       activeDot={{
                         r: 4,
@@ -457,6 +457,6 @@ function Charts({ logData }: ChartsProps) {
       </div>
     </div>
   );
-}
+});
 
 export default Charts;

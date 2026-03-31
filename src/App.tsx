@@ -10,218 +10,62 @@ import Charts, {
   TelemetryStatus,
 } from "./components/Charts";
 import ControllerSliders from "./components/Slider";
-import config from "./config.json";
+import { useSimulationRuntime } from "./hooks/useSimulationRuntime";
 import appTheme from "./theme";
+import type { ServerTarget } from "./types/simulator";
 
-let intervalId: number;
-let serverUrl = config.localServer;
-const MAX_LOG_POINTS = 1200;
 const MIN_FETCH_DURATION = 50;
 const MAX_FETCH_DURATION = 1000;
 
-interface LogEntry {
-  time: number;
-  x: number;
-  theta: number;
-  force: number;
-  theta_dot_dot: number;
-}
+const PROJECT_LINKS = [
+  {
+    label: "Frontend",
+    href: "https://github.com/linem-davton/inverted_pendulum_frontend",
+  },
+  {
+    label: "Backend",
+    href: "https://github.com/linem-davton/es-lab-task1",
+  },
+  {
+    label: "Docs",
+    href: "https://eslab.es.eti.uni-siegen.de/eslab1/docs/index.html",
+  },
+] as const;
 
 function formatMetric(value: number, digits = 2) {
   return Number.isFinite(value) ? value.toFixed(digits) : "—";
 }
 
 function App() {
-  const [simData, setSimData] = useState({
-    time: 0,
-    cartPosition: 100,
-    pendulumAngle: 0.75,
-  });
-  const [logData, setLogData] = useState<LogEntry[]>([]);
-  const [paused, setPaused] = useState(true);
-  const [start, setStart] = useState(false);
   const [fetchDuration, setFetchDuration] = useState(300);
   const [fetchDurationInput, setFetchDurationInput] = useState("300");
-  const [server, setServer] = useState(
-    localStorage.getItem("serverUrl") || "remote",
-  );
-
-  if (server === "remote") {
-    serverUrl = config.remoteServer;
-  }
-  if (server === "local") {
-    serverUrl = config.localServer;
-  }
-
-  const fetchData = () => {
-    fetch(`${serverUrl}/sim`)
-      .then((res) => res.json())
-      .then((data) => {
-        setSimData({
-          time: data.time,
-          cartPosition: data.x,
-          pendulumAngle: data.theta,
-        });
-        setLogData((prevLogData) => [
-          ...prevLogData,
-          {
-            time: data.time,
-            x: data.x,
-            theta: data.theta,
-            force: data.force,
-            theta_dot_dot: data.theta_dot_dot,
-          },
-        ].slice(-MAX_LOG_POINTS));
-        setPaused(data.pause);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  };
-
-  useEffect(() => {
-    fetch(`${serverUrl}/status`)
-      .then((res) => res.json())
-      .then((data) => {
-        setStart(() => {
-          setPaused(data.pause);
-          if (data.start && !data.pause) {
-            intervalId = setInterval(fetchData, fetchDuration);
-            console.log("Interval Started with ID:", intervalId);
-          }
-          return data.start;
-        });
-      })
-      .catch((err) => console.error(err));
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("serverUrl", server);
-  }, [server]);
-
-  useEffect(() => {
-    setFetchDurationInput(String(fetchDuration));
-  }, [fetchDuration]);
-
-  const restartSimulation = () => {
-    clearInterval(intervalId);
-    setLogData([]);
-    fetch(`${serverUrl}/reset`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reset: true }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        setLogData([]);
-        intervalId = setInterval(fetchData, fetchDuration);
-      })
-      .catch((error) => {
-        alert("Error: Make sure server is running");
-        console.error("Error:", error);
-      });
-  };
-
-  const startStopSimulation = () => {
-    fetch(`${serverUrl}/startstop`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start: paused }),
-    })
-      .then(() => {
-        setPaused((pause) => {
-          if (!pause) {
-            clearInterval(intervalId);
-            console.log("Cleared Intervalid :", intervalId);
-          } else {
-            intervalId = setInterval(fetchData, fetchDuration);
-            console.log("Interval Started with ID:", intervalId);
-          }
-          console.log("Paused status :" + !pause);
-          return !pause;
-        });
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  };
-
-  const startSimulation = () => {
-    fetch(`${serverUrl}/startstop`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start: true }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        setStart(() => {
-          setPaused((pause) => !pause);
-          intervalId = setInterval(fetchData, fetchDuration);
-          console.log("Interval Started with ID:", intervalId);
-          return true;
-        });
-      })
-      .catch((error) => {
-        alert("Error: Make sure server is running");
-        console.error(error);
-      });
-  };
-
-  const parsedFetchDuration = Number(fetchDurationInput.trim());
-
-  const applyFetchDuration = () => {
-    if (fetchDurationInput.trim() === "" || !Number.isFinite(parsedFetchDuration)) {
-      setFetchDurationInput(String(fetchDuration));
-      return;
-    }
-
-    const nextDuration = Math.min(
-      MAX_FETCH_DURATION,
-      Math.max(MIN_FETCH_DURATION, Math.round(parsedFetchDuration)),
-    );
-
-    clearInterval(intervalId);
-
-    if (start && !paused) {
-      intervalId = setInterval(fetchData, nextDuration);
-    }
-
-    setFetchDuration(nextDuration);
-    setFetchDurationInput(String(nextDuration));
-  };
+  const [server, setServer] = useState<ServerTarget>(() => {
+    return localStorage.getItem("serverUrl") === "local" ? "local" : "remote";
+  });
+  const {
+    logData,
+    paused,
+    restartSimulation,
+    simData,
+    startSimulation,
+    started,
+    toggleSimulation,
+  } = useSimulationRuntime({
+    fetchDuration,
+    server,
+  });
 
   const latestLog = logData.length > 0 ? logData[logData.length - 1] : null;
   const hasTelemetryStatus = logData.length >= MIN_TELEMETRY_BADGE_SAMPLES;
-  const statusTone = !start ? "idle" : paused ? "paused" : "live";
-  const statusLabel = !start
+  const statusTone = !started ? "idle" : paused ? "paused" : "live";
+  const statusLabel = !started
     ? "Idle"
     : paused
       ? "Paused"
       : "Live";
   const connectionLabel = server === "remote" ? "Remote" : "Local";
-  const projectLinks = [
-    {
-      label: "Frontend",
-      href: "https://github.com/linem-davton/inverted_pendulum_frontend",
-    },
-    {
-      label: "Backend",
-      href: "https://github.com/linem-davton/es-lab-task1",
-    },
-    {
-      label: "Docs",
-      href: "https://eslab.es.eti.uni-siegen.de/eslab1/docs/index.html",
-    },
-  ];
-  const docsLink = projectLinks.find((link) => link.label === "Docs");
-  const referenceLinks = projectLinks.filter((link) => link.label !== "Docs");
+  const docsLink = PROJECT_LINKS.find((link) => link.label === "Docs");
+  const referenceLinks = PROJECT_LINKS.filter((link) => link.label !== "Docs");
 
   const metrics = [
     {
@@ -250,6 +94,34 @@ function App() {
     },
   ];
 
+  const parsedFetchDuration = Number(fetchDurationInput.trim());
+
+  const applyFetchDuration = () => {
+    if (
+      fetchDurationInput.trim() === "" ||
+      !Number.isFinite(parsedFetchDuration)
+    ) {
+      setFetchDurationInput(String(fetchDuration));
+      return;
+    }
+
+    const nextDuration = Math.min(
+      MAX_FETCH_DURATION,
+      Math.max(MIN_FETCH_DURATION, Math.round(parsedFetchDuration)),
+    );
+
+    setFetchDuration(nextDuration);
+    setFetchDurationInput(String(nextDuration));
+  };
+
+  useEffect(() => {
+    localStorage.setItem("serverUrl", server);
+  }, [server]);
+
+  useEffect(() => {
+    setFetchDurationInput(String(fetchDuration));
+  }, [fetchDuration]);
+
   return (
     <ThemeProvider theme={appTheme}>
       <CssBaseline />
@@ -267,7 +139,9 @@ function App() {
                     server === "local" ? "toolbarAction--active" : ""
                   }`}
                   onClick={() => {
-                    setServer(server === "remote" ? "local" : "remote");
+                    setServer((previousServer) => {
+                      return previousServer === "remote" ? "local" : "remote";
+                    });
                   }}
                   aria-pressed={server === "local"}
                 >
@@ -373,15 +247,19 @@ function App() {
                 <span className="eyebrow">Session control</span>
               </div>
 
-              <div className={`actionStack ${start ? "actionStack--dual" : ""}`}>
-                {start ? (
+              <div
+                className={`actionStack ${started ? "actionStack--dual" : ""}`}
+              >
+                {started ? (
                   <>
                     <Button
                       fullWidth
                       variant="contained"
                       color={paused ? "primary" : "secondary"}
                       size="large"
-                      onClick={startStopSimulation}
+                      onClick={() => {
+                        void toggleSimulation();
+                      }}
                     >
                       {paused ? "Continue Simulation" : "Pause Simulation"}
                     </Button>
@@ -389,7 +267,9 @@ function App() {
                       fullWidth
                       variant="outlined"
                       size="large"
-                      onClick={restartSimulation}
+                      onClick={() => {
+                        void restartSimulation();
+                      }}
                     >
                       Restart Run
                     </Button>
@@ -399,7 +279,9 @@ function App() {
                     fullWidth
                     variant="contained"
                     size="large"
-                    onClick={startSimulation}
+                    onClick={() => {
+                      void startSimulation();
+                    }}
                   >
                     Start Simulation
                   </Button>

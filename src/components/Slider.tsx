@@ -1,10 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { MutableRefObject } from "react";
 import Button from "@mui/material/Button";
 import Slider from "@mui/material/Slider";
 import TextField from "@mui/material/TextField";
-import config from "../config.json";
+import { createSimulatorClient } from "../lib/simulatorApi";
+import type {
+  ControllerState,
+  DisturbanceConfig,
+  PidConfig,
+  ServerTarget,
+} from "../types/simulator";
 
-const defaults = {
+const PUSH_DELAY_MS = 150;
+const BASE_PID_RANGE = 10;
+
+const defaults: ControllerState = {
   kp: 0.5,
   ki: 0,
   kd: 2,
@@ -13,13 +23,22 @@ const defaults = {
   jitter: 0,
 };
 
-type ControllerState = typeof defaults;
 type ParamKey = keyof ControllerState;
 type PidKey = "kp" | "ki" | "kd";
 
+interface ParameterMeta {
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  precision: number;
+  tone: "primary" | "secondary";
+}
+
 const pidKeys: PidKey[] = ["kp", "ki", "kd"];
 
-const pidMeta = {
+const pidMeta: Record<PidKey, Omit<ParameterMeta, "min" | "max">> = {
   kp: {
     label: "Kp",
     unit: "",
@@ -41,9 +60,12 @@ const pidMeta = {
     precision: 2,
     tone: "secondary",
   },
-} as const;
+};
 
-const disturbanceMeta = {
+const disturbanceMeta: Record<
+  keyof DisturbanceConfig,
+  ParameterMeta
+> = {
   ref: {
     label: "Reference",
     unit: "rad",
@@ -71,7 +93,11 @@ const disturbanceMeta = {
     precision: 0,
     tone: "secondary",
   },
-} as const;
+};
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "AbortError";
+}
 
 function roundValue(value: number, precision: number) {
   return Number(value.toFixed(precision));
@@ -85,34 +111,102 @@ function formatValue(value: number, precision: number) {
   return value.toFixed(precision);
 }
 
-function ControllerSliders({ server }: { server: string }) {
-  const [controller, setController] = useState<ControllerState>(defaults);
-  const [pidRanges, setPidRanges] = useState<Record<PidKey, number>>({
-    kp: 10,
-    ki: 10,
-    kd: 10,
-  });
+function pickPid(controller: ControllerState): PidConfig {
+  return {
+    kp: controller.kp,
+    ki: controller.ki,
+    kd: controller.kd,
+  };
+}
 
-  const activeServerUrl =
-    server === "remote" ? config.remoteServer : config.localServer;
+function pickDisturbance(controller: ControllerState): DisturbanceConfig {
+  return {
+    ref: controller.ref,
+    delay: controller.delay,
+    jitter: controller.jitter,
+  };
+}
+
+function isSamePid(previous: PidConfig, next: PidConfig) {
+  return (
+    previous.kp === next.kp &&
+    previous.ki === next.ki &&
+    previous.kd === next.kd
+  );
+}
+
+function isSameDisturbance(
+  previous: DisturbanceConfig,
+  next: DisturbanceConfig,
+) {
+  return (
+    previous.ref === next.ref &&
+    previous.delay === next.delay &&
+    previous.jitter === next.jitter
+  );
+}
+
+function getPidRange(value: number) {
+  return Math.max(BASE_PID_RANGE, roundValue(Math.max(value, 2) * 5, 2));
+}
+
+function getPidRanges(controller: ControllerState): Record<PidKey, number> {
+  return {
+    kp: getPidRange(controller.kp),
+    ki: getPidRange(controller.ki),
+    kd: getPidRange(controller.kd),
+  };
+}
+
+function clearTimer(timerRef: MutableRefObject<number | null>) {
+  if (timerRef.current !== null) {
+    window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
+}
+
+function abortRequest(
+  requestRef: MutableRefObject<AbortController | null>,
+) {
+  requestRef.current?.abort();
+  requestRef.current = null;
+}
+
+function ControllerSliders({ server }: { server: ServerTarget }) {
+  const [controller, setController] = useState<ControllerState>(defaults);
+  const [pidRanges, setPidRanges] = useState<Record<PidKey, number>>(
+    getPidRanges(defaults),
+  );
+
+  const clientRef = useRef(createSimulatorClient(server));
+  const hydratedRef = useRef(false);
+  const pidTimerRef = useRef<number | null>(null);
+  const disturbanceTimerRef = useRef<number | null>(null);
+  const pidRequestRef = useRef<AbortController | null>(null);
+  const disturbanceRequestRef = useRef<AbortController | null>(null);
+  const hydrateRequestRef = useRef<AbortController | null>(null);
+  const lastSubmittedPidRef = useRef<PidConfig>(pickPid(defaults));
+  const lastSubmittedDisturbanceRef = useRef<DisturbanceConfig>(
+    pickDisturbance(defaults),
+  );
 
   const updatePidRange = (key: PidKey, value: number) => {
-    setPidRanges((prevRanges) => {
-      const currentMax = prevRanges[key];
+    setPidRanges((previousRanges) => {
+      const currentMax = previousRanges[key];
       let nextMax = currentMax;
 
       if (value >= currentMax * 0.95) {
-        nextMax = Math.max(roundValue(value * 5, 2), 10);
-      } else if (currentMax > 10 && value <= currentMax * 0.2) {
-        nextMax = Math.max(roundValue(Math.max(value, 2) * 5, 2), 10);
+        nextMax = getPidRange(value);
+      } else if (currentMax > BASE_PID_RANGE && value <= currentMax * 0.2) {
+        nextMax = getPidRange(value);
       }
 
       if (nextMax === currentMax) {
-        return prevRanges;
+        return previousRanges;
       }
 
       return {
-        ...prevRanges,
+        ...previousRanges,
         [key]: nextMax,
       };
     });
@@ -131,96 +225,215 @@ function ControllerSliders({ server }: { server: string }) {
       );
 
       updatePidRange(pidKey, nextValue);
-      setController((prev) => ({
-        ...prev,
+      setController((previousController) => ({
+        ...previousController,
         [pidKey]: nextValue,
       }));
       return;
     }
 
-    const meta = disturbanceMeta[key as keyof typeof disturbanceMeta];
+    const meta = disturbanceMeta[key as keyof DisturbanceConfig];
     const nextValue = roundValue(
       clamp(rawValue, meta.min, meta.max),
       meta.precision,
     );
 
-    setController((prev) => ({
-      ...prev,
+    setController((previousController) => ({
+      ...previousController,
       [key]: nextValue,
     }));
   };
 
   useEffect(() => {
-    fetch(`${activeServerUrl}/pid`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kp: controller.kp,
-        ki: controller.ki,
-        kd: controller.kd,
-      }),
-    })
-      .then((response) => {
-        console.log(response);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  }, [activeServerUrl, controller.kd, controller.ki, controller.kp]);
+    clientRef.current = createSimulatorClient(server);
+    hydratedRef.current = false;
+    let isCurrent = true;
+
+    clearTimer(pidTimerRef);
+    clearTimer(disturbanceTimerRef);
+    abortRequest(pidRequestRef);
+    abortRequest(disturbanceRequestRef);
+    abortRequest(hydrateRequestRef);
+
+    const controllerAbort = new AbortController();
+    hydrateRequestRef.current = controllerAbort;
+
+    const hydrateControls = async () => {
+      try {
+        const [pidResult, disturbanceResult] = await Promise.allSettled([
+          clientRef.current.getPid(controllerAbort.signal),
+          clientRef.current.getParams(controllerAbort.signal),
+        ]);
+
+        if (controllerAbort.signal.aborted) {
+          return;
+        }
+
+        if (
+          pidResult.status === "rejected" &&
+          isAbortError(pidResult.reason)
+        ) {
+          return;
+        }
+
+        if (
+          disturbanceResult.status === "rejected" &&
+          isAbortError(disturbanceResult.reason)
+        ) {
+          return;
+        }
+
+        const nextPid =
+          pidResult.status === "fulfilled" ? pidResult.value : pickPid(defaults);
+        const nextDisturbance =
+          disturbanceResult.status === "fulfilled"
+            ? disturbanceResult.value
+            : pickDisturbance(defaults);
+        const nextController = {
+          ...defaults,
+          ...nextPid,
+          ...nextDisturbance,
+        };
+
+        if (pidResult.status === "rejected") {
+          console.warn("Falling back to default PID values:", pidResult.reason);
+        }
+
+        if (disturbanceResult.status === "rejected") {
+          console.warn(
+            "Falling back to default disturbance values:",
+            disturbanceResult.reason,
+          );
+        }
+
+        setController(nextController);
+        setPidRanges(getPidRanges(nextController));
+        lastSubmittedPidRef.current = pickPid(nextController);
+        lastSubmittedDisturbanceRef.current = pickDisturbance(nextController);
+      } finally {
+        if (hydrateRequestRef.current === controllerAbort) {
+          hydrateRequestRef.current = null;
+        }
+        if (isCurrent) {
+          hydratedRef.current = true;
+        }
+      }
+    };
+
+    void hydrateControls();
+
+    return () => {
+      isCurrent = false;
+      clearTimer(pidTimerRef);
+      clearTimer(disturbanceTimerRef);
+      abortRequest(pidRequestRef);
+      abortRequest(disturbanceRequestRef);
+      abortRequest(hydrateRequestRef);
+    };
+  }, [server]);
 
   useEffect(() => {
-    fetch(`${activeServerUrl}/params`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ref: controller.ref,
-        delay: controller.delay,
-        jitter: controller.jitter,
-      }),
-    })
-      .then((response) => {
-        console.log(response);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  }, [activeServerUrl, controller.delay, controller.jitter, controller.ref]);
+    if (!hydratedRef.current) {
+      return;
+    }
+
+    const nextPid = pickPid(controller);
+
+    if (isSamePid(lastSubmittedPidRef.current, nextPid)) {
+      return;
+    }
+
+    clearTimer(pidTimerRef);
+
+    pidTimerRef.current = window.setTimeout(() => {
+      const controllerAbort = new AbortController();
+      abortRequest(pidRequestRef);
+      pidRequestRef.current = controllerAbort;
+
+      void clientRef.current
+        .setPid(nextPid, controllerAbort.signal)
+        .then(() => {
+          lastSubmittedPidRef.current = nextPid;
+        })
+        .catch((error) => {
+          if (!isAbortError(error)) {
+            console.error("Failed to update PID values:", error);
+          }
+        })
+        .finally(() => {
+          if (pidRequestRef.current === controllerAbort) {
+            pidRequestRef.current = null;
+          }
+        });
+    }, PUSH_DELAY_MS);
+
+    return () => {
+      clearTimer(pidTimerRef);
+    };
+  }, [controller.kd, controller.ki, controller.kp]);
+
+  useEffect(() => {
+    if (!hydratedRef.current) {
+      return;
+    }
+
+    const nextDisturbance = pickDisturbance(controller);
+
+    if (
+      isSameDisturbance(lastSubmittedDisturbanceRef.current, nextDisturbance)
+    ) {
+      return;
+    }
+
+    clearTimer(disturbanceTimerRef);
+
+    disturbanceTimerRef.current = window.setTimeout(() => {
+      const controllerAbort = new AbortController();
+      abortRequest(disturbanceRequestRef);
+      disturbanceRequestRef.current = controllerAbort;
+
+      void clientRef.current
+        .setParams(nextDisturbance, controllerAbort.signal)
+        .then(() => {
+          lastSubmittedDisturbanceRef.current = nextDisturbance;
+        })
+        .catch((error) => {
+          if (!isAbortError(error)) {
+            console.error("Failed to update disturbance parameters:", error);
+          }
+        })
+        .finally(() => {
+          if (disturbanceRequestRef.current === controllerAbort) {
+            disturbanceRequestRef.current = null;
+          }
+        });
+    }, PUSH_DELAY_MS);
+
+    return () => {
+      clearTimer(disturbanceTimerRef);
+    };
+  }, [controller.delay, controller.jitter, controller.ref]);
 
   const resetPid = () => {
-    setController((prev) => ({
-      ...prev,
+    setController((previousController) => ({
+      ...previousController,
       kp: defaults.kp,
       ki: defaults.ki,
       kd: defaults.kd,
     }));
-    setPidRanges({
-      kp: 10,
-      ki: 10,
-      kd: 10,
-    });
+    setPidRanges(getPidRanges(defaults));
   };
 
   const resetDisturbance = () => {
-    setController((prev) => ({
-      ...prev,
+    setController((previousController) => ({
+      ...previousController,
       ref: defaults.ref,
       delay: defaults.delay,
       jitter: defaults.jitter,
     }));
   };
 
-  const renderParameterCard = (
-    key: ParamKey,
-    meta: {
-      label: string;
-      unit: string;
-      min: number;
-      max: number;
-      step: number;
-      precision: number;
-      tone: string;
-    },
-  ) => {
+  const renderParameterCard = (key: ParamKey, meta: ParameterMeta) => {
     const value = controller[key];
 
     return (
