@@ -18,7 +18,7 @@ The operator view exposes two live charts:
 
 The response annotations on the `Error vs Time` chart use the latest detected reference step and are defined as follows:
 
-- **Overshoot**: the largest error excursion after the response crosses past the target.
+- **Overshoot**: the largest error excursion after the response crosses past the target. The displayed overshoot percentage is computed as `abs(overshoot error) / initial step error * 100`, so it is normalized by the initial error magnitude rather than by the reference value.
 - **Rise time**: the time for the absolute error to fall from `90%` to `10%` of the initial step error.
 - **Settling time**: the first time the absolute error enters and then stays within a `+-2%` band of the initial step error magnitude.
 
