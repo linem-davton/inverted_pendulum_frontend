@@ -9,6 +9,21 @@ This project is a React-based frontend for controlling an inverted pendulum simu
 - **Pause/Continue:** Enables pausing or continuing the simulation as needed.
 - **Reset Parameters:** Resets the parameters of the simulation.
 
+## Telemetry Charts
+
+The operator view exposes two live charts:
+
+- **Force Response vs Angle**: plots commanded force and pendulum angle against time.
+- **Error vs Time**: plots tracking error against time, where `error = reference angle - measured pendulum angle`.
+
+The response annotations on the `Error vs Time` chart use the latest detected reference step and are defined as follows:
+
+- **Overshoot**: the largest error excursion after the response crosses past the target.
+- **Rise time**: the time for the absolute error to fall from `90%` to `10%` of the initial step error.
+- **Settling time**: the first time the absolute error enters and then stays within a `+-2%` band of the initial step error magnitude.
+
+These metrics are computed from the frontend telemetry buffer, so their time resolution depends on the current polling interval.
+
 ## Getting Started
 
 ## Prerequisites

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -33,9 +33,23 @@ function formatMetric(value: number, digits = 2) {
   return Number.isFinite(value) ? value.toFixed(digits) : "—";
 }
 
+function isInteractiveHotkeyTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest(
+      'input, textarea, select, button, a, [contenteditable="true"], [role="textbox"]',
+    ),
+  );
+}
+
 function App() {
   const [fetchDuration, setFetchDuration] = useState(300);
   const [fetchDurationInput, setFetchDurationInput] = useState("300");
+  const runActionButtonRef = useRef<HTMLButtonElement | null>(null);
+  const restartActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const [server, setServer] = useState<ServerTarget>(() => {
     return localStorage.getItem("serverUrl") === "local" ? "local" : "remote";
   });
@@ -91,6 +105,17 @@ function App() {
   ];
 
   const parsedFetchDuration = Number(fetchDurationInput.trim());
+  const handleRunAction = () => {
+    if (started) {
+      void toggleSimulation();
+      return;
+    }
+
+    void startSimulation();
+  };
+  const handleRestartAction = () => {
+    void restartSimulation();
+  };
 
   const applyFetchDuration = () => {
     if (
@@ -117,6 +142,38 @@ function App() {
   useEffect(() => {
     setFetchDurationInput(String(fetchDuration));
   }, [fetchDuration]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        isInteractiveHotkeyTarget(event.target)
+      ) {
+        return;
+      }
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        runActionButtonRef.current?.click();
+        return;
+      }
+
+      if (event.code === "KeyN") {
+        event.preventDefault();
+        restartActionButtonRef.current?.click();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   return (
     <ThemeProvider theme={appTheme}>
@@ -249,35 +306,38 @@ function App() {
                 {started ? (
                   <>
                     <Button
+                      ref={runActionButtonRef}
                       fullWidth
                       variant="contained"
                       color={paused ? "primary" : "secondary"}
                       size="large"
-                      onClick={() => {
-                        void toggleSimulation();
-                      }}
+                      onClick={handleRunAction}
+                      aria-keyshortcuts="Space"
+                      title="Shortcut: Space"
                     >
                       {paused ? "Continue Simulation" : "Pause Simulation"}
                     </Button>
                     <Button
+                      ref={restartActionButtonRef}
                       fullWidth
                       variant="outlined"
                       size="large"
-                      onClick={() => {
-                        void restartSimulation();
-                      }}
+                      onClick={handleRestartAction}
+                      aria-keyshortcuts="N"
+                      title="Shortcut: N"
                     >
                       Restart Run
                     </Button>
                   </>
                 ) : (
                   <Button
+                    ref={runActionButtonRef}
                     fullWidth
                     variant="contained"
                     size="large"
-                    onClick={() => {
-                      void startSimulation();
-                    }}
+                    onClick={handleRunAction}
+                    aria-keyshortcuts="Space"
+                    title="Shortcut: Space"
                   >
                     Start Simulation
                   </Button>

@@ -37,7 +37,8 @@ function isSameLogEntry(
     previousEntry.x === nextEntry.x &&
     previousEntry.theta === nextEntry.theta &&
     previousEntry.force === nextEntry.force &&
-    previousEntry.theta_dot_dot === nextEntry.theta_dot_dot
+    previousEntry.theta_dot_dot === nextEntry.theta_dot_dot &&
+    previousEntry.ref === nextEntry.ref
   );
 }
 
@@ -56,6 +57,7 @@ function toLogEntry(sample: SimulationSample): LogEntry {
     theta: sample.theta,
     force: sample.force,
     theta_dot_dot: sample.theta_dot_dot,
+    ref: sample.ref ?? 0,
   };
 }
 

@@ -12,6 +12,7 @@ export interface LogEntry {
   theta: number;
   force: number;
   theta_dot_dot: number;
+  ref: number;
 }
 
 export interface SimulationSample extends LogEntry {
