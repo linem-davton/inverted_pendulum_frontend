@@ -244,7 +244,7 @@ function App() {
           <aside className="operatorRail">
             <section className="operatorCard operatorCard--session">
               <div className="operatorHeader">
-                <span className="eyebrow">Session control</span>
+                <span className="eyebrow">Run</span>
               </div>
 
               <div
@@ -290,6 +290,9 @@ function App() {
             </section>
 
             <section className="operatorCard operatorCard--tall">
+              <div className="operatorHeader">
+                <span className="eyebrow">Controls</span>
+              </div>
               <ControllerSliders server={server} />
             </section>
           </aside>
