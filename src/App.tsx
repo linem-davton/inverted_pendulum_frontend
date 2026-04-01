@@ -5,10 +5,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import Link from "@mui/material/Link";
 import { ThemeProvider } from "@mui/material/styles";
 import CartPendulum from "./components/CartPendulum";
-import Charts, {
-  MIN_TELEMETRY_BADGE_SAMPLES,
-  TelemetryStatus,
-} from "./components/Charts";
+import Charts from "./components/Charts";
 import ControllerSliders from "./components/Slider";
 import { useSimulationRuntime } from "./hooks/useSimulationRuntime";
 import appTheme from "./theme";
@@ -56,7 +53,6 @@ function App() {
   });
 
   const latestLog = logData.length > 0 ? logData[logData.length - 1] : null;
-  const hasTelemetryStatus = logData.length >= MIN_TELEMETRY_BADGE_SAMPLES;
   const statusTone = !started ? "idle" : paused ? "paused" : "live";
   const statusLabel = !started
     ? "Idle"
@@ -297,12 +293,6 @@ function App() {
             </section>
           </aside>
         </main>
-
-        {hasTelemetryStatus ? (
-          <section className="telemetryFooter">
-            <TelemetryStatus logData={logData} />
-          </section>
-        ) : null}
       </div>
     </ThemeProvider>
   );

@@ -12,7 +12,8 @@ import type {
 } from "../types/simulator";
 
 const PUSH_DELAY_MS = 150;
-const BASE_PID_RANGE = 10;
+const PID_RANGE_STEPS = [1000, 100000, 10000000, 132000000] as const;
+const PID_RANGE_CAP = PID_RANGE_STEPS[PID_RANGE_STEPS.length - 1];
 
 const defaults: ControllerState = {
   kp: 0.5,
@@ -111,6 +112,13 @@ function formatValue(value: number, precision: number) {
   return value.toFixed(precision);
 }
 
+function formatCompactValue(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
 function pickPid(controller: ControllerState): PidConfig {
   return {
     kp: controller.kp,
@@ -147,7 +155,16 @@ function isSameDisturbance(
 }
 
 function getPidRange(value: number) {
-  return Math.max(BASE_PID_RANGE, roundValue(Math.max(value, 2) * 5, 2));
+  return (
+    PID_RANGE_STEPS.find((rangeStep) => value <= rangeStep) ?? PID_RANGE_CAP
+  );
+}
+
+function getNextPidRange(currentRange: number) {
+  return (
+    PID_RANGE_STEPS.find((rangeStep) => rangeStep > currentRange) ??
+    PID_RANGE_CAP
+  );
 }
 
 function getPidRanges(controller: ControllerState): Record<PidKey, number> {
@@ -190,16 +207,10 @@ function ControllerSliders({ server }: { server: ServerTarget }) {
     pickDisturbance(defaults),
   );
 
-  const updatePidRange = (key: PidKey, value: number) => {
+  const increasePidRange = (key: PidKey) => {
     setPidRanges((previousRanges) => {
       const currentMax = previousRanges[key];
-      let nextMax = currentMax;
-
-      if (value >= currentMax * 0.95) {
-        nextMax = getPidRange(value);
-      } else if (currentMax > BASE_PID_RANGE && value <= currentMax * 0.2) {
-        nextMax = getPidRange(value);
-      }
+      const nextMax = getNextPidRange(currentMax);
 
       if (nextMax === currentMax) {
         return previousRanges;
@@ -220,11 +231,10 @@ function ControllerSliders({ server }: { server: ServerTarget }) {
     if (key in pidMeta) {
       const pidKey = key as PidKey;
       const nextValue = roundValue(
-        Math.max(rawValue, 0),
+        clamp(rawValue, 0, pidRanges[pidKey]),
         pidMeta[pidKey].precision,
       );
 
-      updatePidRange(pidKey, nextValue);
       setController((previousController) => ({
         ...previousController,
         [pidKey]: nextValue,
@@ -435,6 +445,12 @@ function ControllerSliders({ server }: { server: ServerTarget }) {
 
   const renderParameterCard = (key: ParamKey, meta: ParameterMeta) => {
     const value = controller[key];
+    const isPidParameter = key in pidMeta;
+    const pidKey = isPidParameter ? (key as PidKey) : null;
+    const canIncreasePidRange =
+      pidKey !== null && pidRanges[pidKey] < PID_RANGE_CAP;
+    const nextPidRange =
+      pidKey !== null ? getNextPidRange(pidRanges[pidKey]) : null;
 
     return (
       <article className={`parameterCard parameterCard--${meta.tone}`} key={key}>
@@ -455,8 +471,30 @@ function ControllerSliders({ server }: { server: ServerTarget }) {
         </div>
 
         <div className="parameterBounds">
-          <span>min {formatValue(meta.min, meta.precision)}</span>
-          <span>max {formatValue(meta.max, meta.precision)}</span>
+          {isPidParameter ? (
+            <>
+              <span>range 0 to {formatCompactValue(meta.max)}</span>
+              <button
+                type="button"
+                className="parameterRangeButton"
+                onClick={() => {
+                  if (pidKey) {
+                    increasePidRange(pidKey);
+                  }
+                }}
+                disabled={!canIncreasePidRange}
+              >
+                {canIncreasePidRange && nextPidRange !== null
+                  ? `to ${formatCompactValue(nextPidRange)}`
+                  : "cap"}
+              </button>
+            </>
+          ) : (
+            <>
+              <span>min {formatValue(meta.min, meta.precision)}</span>
+              <span>max {formatValue(meta.max, meta.precision)}</span>
+            </>
+          )}
         </div>
 
         <div className="parameterControlRow">

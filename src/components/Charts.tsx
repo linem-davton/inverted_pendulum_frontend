@@ -11,19 +11,9 @@ import {
 } from "recharts";
 import type { LogEntry } from "../types/simulator";
 
-type TelemetryTone = "good" | "warn" | "danger" | "neutral";
-
 interface ChartsProps {
   logData: LogEntry[];
 }
-
-interface TelemetryBadge {
-  label: string;
-  detail: string;
-  tone: TelemetryTone;
-}
-
-export const MIN_TELEMETRY_BADGE_SAMPLES = 6;
 
 type ChartKey = "x" | "theta" | "force" | "theta_dot_dot";
 
@@ -94,141 +84,6 @@ function formatAxisTick(value: number) {
   return value.toFixed(2);
 }
 
-function getPeakAbs(logData: LogEntry[], key: "theta" | "force") {
-  return logData.reduce((peak, entry) => {
-    return Math.max(peak, Math.abs(entry[key]));
-  }, 0);
-}
-
-function getSpan(logData: LogEntry[], key: "x") {
-  let minValue = Number.POSITIVE_INFINITY;
-  let maxValue = Number.NEGATIVE_INFINITY;
-
-  for (const entry of logData) {
-    const value = entry[key];
-    minValue = Math.min(minValue, value);
-    maxValue = Math.max(maxValue, value);
-  }
-
-  return maxValue - minValue;
-}
-
-function getStabilityBadge(logData: LogEntry[]): TelemetryBadge {
-  if (logData.length < MIN_TELEMETRY_BADGE_SAMPLES) {
-    return {
-      label: "Warming",
-      detail: "Need more data.",
-      tone: "neutral",
-    };
-  }
-
-  const recentWindow = logData.slice(-Math.min(18, logData.length));
-  const peakAngle = getPeakAbs(logData, "theta");
-  const recentPeak = getPeakAbs(recentWindow, "theta");
-  const latestAngle = Math.abs(logData[logData.length - 1].theta);
-
-  if (
-    recentPeak <= Math.max(0.06, peakAngle * 0.35) &&
-    latestAngle <= Math.max(0.03, peakAngle * 0.22)
-  ) {
-    return {
-      label: "Stable",
-      detail: "Angle settling.",
-      tone: "good",
-    };
-  }
-
-  if (
-    recentPeak >= Math.max(0.22, peakAngle * 0.82) &&
-    latestAngle >= Math.max(0.1, peakAngle * 0.45)
-  ) {
-    return {
-      label: "Unstable",
-      detail: "Angle still wide.",
-      tone: "danger",
-    };
-  }
-
-  return {
-    label: "Correcting",
-    detail: "Recovery in progress.",
-    tone: "warn",
-  };
-}
-
-function getDriftBadge(logData: LogEntry[]): TelemetryBadge {
-  if (logData.length < 4) {
-    return {
-      label: "Drift",
-      detail: "Need more travel data.",
-      tone: "neutral",
-    };
-  }
-
-  const latestOffset = Math.abs(logData[logData.length - 1].x);
-  const travelSpan = getSpan(logData, "x");
-
-  if (
-    latestOffset <= Math.max(0.08, travelSpan * 0.12) &&
-    travelSpan <= 0.6
-  ) {
-    return {
-      label: "Centered",
-      detail: "Cart near center.",
-      tone: "good",
-    };
-  }
-
-  if (latestOffset >= Math.max(0.32, travelSpan * 0.5)) {
-    return {
-      label: "Drifting",
-      detail: "Offset is growing.",
-      tone: "danger",
-    };
-  }
-
-  return {
-    label: "Offset",
-    detail: "Not centered yet.",
-    tone: "warn",
-  };
-}
-
-function getForceBadge(logData: LogEntry[]): TelemetryBadge {
-  if (logData.length < 4) {
-    return {
-      label: "Drive",
-      detail: "Need more force data.",
-      tone: "neutral",
-    };
-  }
-
-  const peakForce = getPeakAbs(logData, "force");
-  const latestForce = Math.abs(logData[logData.length - 1].force);
-
-  if (peakForce <= 1.5 && latestForce <= 1.0) {
-    return {
-      label: "Drive light",
-      detail: "Force demand is low.",
-      tone: "good",
-    };
-  }
-
-  if (peakForce >= 6 || latestForce >= 3.5) {
-    return {
-      label: "Drive high",
-      detail: "Force demand is high.",
-      tone: "danger",
-    };
-  }
-
-  return {
-    label: "Drive active",
-    detail: "Force demand is up.",
-    tone: "warn",
-  };
-}
-
 function TelemetryTooltip({
   active,
   label,
@@ -281,39 +136,6 @@ function TelemetryTooltip({
     </div>
   );
 }
-
-function TelemetryBadgeRow({ logData }: { logData: LogEntry[] }) {
-  const stabilityBadge = getStabilityBadge(logData);
-  const driftBadge = getDriftBadge(logData);
-  const forceBadge = getForceBadge(logData);
-  const summaryBadges = [stabilityBadge, driftBadge, forceBadge];
-
-  return (
-    <div className="telemetryBadgeRow" aria-label="Telemetry state badges">
-      {summaryBadges.map((badge) => (
-        <article
-          className={`telemetryBadge telemetryBadge--${badge.tone}`}
-          key={badge.label}
-        >
-          <strong className="telemetryBadgeLabel">{badge.label}</strong>
-          <span className="telemetryBadgeDetail">{badge.detail}</span>
-        </article>
-      ))}
-    </div>
-  );
-}
-
-export const TelemetryStatus = memo(function TelemetryStatus({
-  logData,
-}: {
-  logData: LogEntry[];
-}) {
-  if (logData.length < MIN_TELEMETRY_BADGE_SAMPLES) {
-    return null;
-  }
-
-  return <TelemetryBadgeRow logData={logData} />;
-});
 
 const Charts = memo(function Charts({ logData }: ChartsProps) {
   if (logData.length === 0) {

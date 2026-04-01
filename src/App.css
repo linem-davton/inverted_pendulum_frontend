@@ -549,54 +549,6 @@
   display: grid;
   gap: 1rem;
 }
-
-.telemetryBadgeRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.telemetryBadge {
-  flex: 1 1 13rem;
-  display: grid;
-  gap: 0.35rem;
-  min-width: 0;
-  padding: 0.85rem 0.95rem;
-  border-radius: var(--radius-soft);
-  border: 1px solid rgba(89, 211, 255, 0.12);
-  background: rgba(7, 16, 23, 0.42);
-}
-
-.telemetryBadge--good {
-  border-color: rgba(157, 248, 113, 0.24);
-  background:
-    radial-gradient(circle at top right, rgba(157, 248, 113, 0.08), transparent 36%),
-    rgba(7, 16, 23, 0.44);
-}
-
-.telemetryBadge--warn {
-  border-color: rgba(255, 122, 26, 0.22);
-  background:
-    radial-gradient(circle at top right, rgba(255, 122, 26, 0.08), transparent 36%),
-    rgba(7, 16, 23, 0.44);
-}
-
-.telemetryBadge--danger {
-  border-color: rgba(255, 107, 87, 0.22);
-  background:
-    radial-gradient(circle at top right, rgba(255, 107, 87, 0.08), transparent 36%),
-    rgba(7, 16, 23, 0.44);
-}
-
-.telemetryBadgeLabel {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text);
-}
-
-.telemetryBadgeDetail,
 .telemetryCallout,
 .telemetrySummaryNote,
 .chartEmptyHint {
@@ -643,7 +595,6 @@
 
 .telemetrySummaryLabel,
 .telemetrySummaryUnit,
-.telemetryBadgeDetail,
 .chartMiniStatLabel,
 .chartTooltipName,
 .chartTooltipValue,
@@ -757,10 +708,6 @@
 
 .telemetryDeck--inline {
   gap: 0;
-}
-
-.telemetryFooter {
-  margin-top: var(--space-5);
 }
 
 .chartEmptyCard {
@@ -1171,8 +1118,37 @@
 .parameterBounds {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 1rem;
   margin-top: 0.8rem;
+}
+
+.parameterRangeButton {
+  padding: 0.16rem 0.48rem;
+  border: 1px solid rgba(89, 211, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(7, 16, 23, 0.42);
+  color: rgba(214, 227, 236, 0.8);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.parameterRangeButton:hover:not(:disabled) {
+  border-color: rgba(89, 211, 255, 0.26);
+  background: rgba(10, 23, 32, 0.68);
+  color: rgba(239, 245, 249, 0.94);
+}
+
+.parameterRangeButton:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .parameterControlRow {
