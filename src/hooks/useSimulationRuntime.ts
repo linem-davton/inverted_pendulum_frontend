@@ -18,6 +18,7 @@ const INITIAL_SIM_DATA: SimData = {
 
 interface SyncOptions {
   resetLog?: boolean;
+  throwOnError?: boolean;
 }
 
 function isAbortError(error: unknown) {
@@ -72,9 +73,11 @@ function toSimData(sample: SimulationSample): SimData {
 export function useSimulationRuntime({
   server,
   fetchDuration,
+  onActionError,
 }: {
   server: ServerTarget;
   fetchDuration: number;
+  onActionError?: (error: unknown) => void;
 }) {
   const [simData, setSimData] = useState<SimData>(INITIAL_SIM_DATA);
   const [logData, setLogData] = useState<LogEntry[]>([]);
@@ -204,6 +207,7 @@ export function useSimulationRuntime({
 
   syncRuntimeRef.current = async (options?: SyncOptions) => {
     const resetLog = options?.resetLog ?? false;
+    const throwOnError = options?.throwOnError ?? false;
 
     clearScheduledPoll();
     abortActiveRequest();
@@ -237,6 +241,9 @@ export function useSimulationRuntime({
       if (!isAbortError(error)) {
         clearScheduledPoll();
         console.error("Failed to synchronize simulator state:", error);
+        if (throwOnError) {
+          throw error;
+        }
       }
     } finally {
       if (requestAbortRef.current === controller) {
@@ -273,27 +280,30 @@ export function useSimulationRuntime({
   const startSimulation = async () => {
     try {
       await clientRef.current.toggleStartStop();
-      await syncRuntimeRef.current();
+      await syncRuntimeRef.current({ throwOnError: true });
     } catch (error) {
       console.error("Failed to start simulation:", error);
+      onActionError?.(error);
     }
   };
 
   const toggleSimulation = async () => {
     try {
       await clientRef.current.toggleStartStop();
-      await syncRuntimeRef.current();
+      await syncRuntimeRef.current({ throwOnError: true });
     } catch (error) {
       console.error("Failed to toggle simulation:", error);
+      onActionError?.(error);
     }
   };
 
   const restartSimulation = async () => {
     try {
       await clientRef.current.reset();
-      await syncRuntimeRef.current({ resetLog: true });
+      await syncRuntimeRef.current({ resetLog: true, throwOnError: true });
     } catch (error) {
       console.error("Failed to restart simulation:", error);
+      onActionError?.(error);
     }
   };
 

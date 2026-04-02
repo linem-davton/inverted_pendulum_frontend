@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
 import Link from "@mui/material/Link";
 import { ThemeProvider } from "@mui/material/styles";
 import CartPendulum from "./components/CartPendulum";
@@ -48,6 +52,9 @@ function isInteractiveHotkeyTarget(target: EventTarget | null) {
 function App() {
   const [fetchDuration, setFetchDuration] = useState(300);
   const [fetchDurationInput, setFetchDurationInput] = useState("300");
+  const [actionErrorServer, setActionErrorServer] = useState<ServerTarget | null>(
+    null,
+  );
   const runActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const restartActionButtonRef = useRef<HTMLButtonElement | null>(null);
   const [server, setServer] = useState<ServerTarget>(() => {
@@ -63,6 +70,9 @@ function App() {
     toggleSimulation,
   } = useSimulationRuntime({
     fetchDuration,
+    onActionError: () => {
+      setActionErrorServer(server);
+    },
     server,
   });
 
@@ -74,6 +84,10 @@ function App() {
       ? "Paused"
       : "Live";
   const connectionLabel = server === "remote" ? "Remote" : "Local";
+  const actionErrorMessage =
+    actionErrorServer === null
+      ? ""
+      : `Make Sure ${actionErrorServer === "remote" ? "Remote" : "Local"} Server is Running`;
   const docsLink = PROJECT_LINKS.find((link) => link.label === "Docs");
   const referenceLinks = PROJECT_LINKS.filter((link) => link.label !== "Docs");
 
@@ -178,6 +192,27 @@ function App() {
   return (
     <ThemeProvider theme={appTheme}>
       <CssBaseline />
+      <Dialog
+        open={actionErrorServer !== null}
+        onClose={() => {
+          setActionErrorServer(null);
+        }}
+        aria-labelledby="server-error-dialog-title"
+      >
+        <DialogTitle id="server-error-dialog-title">
+          Server Connection Error
+        </DialogTitle>
+        <DialogContent>{actionErrorMessage}</DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setActionErrorServer(null);
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
       <div className="appShell">
         <header className="topBar topBar--utilityOnly">
           <section className="topBarUtilities topBarUtilities--compact">
