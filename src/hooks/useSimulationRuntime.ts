@@ -12,8 +12,8 @@ const MAX_LOG_POINTS = 1200;
 
 const INITIAL_SIM_DATA: SimData = {
   time: 0,
-  cartPosition: 100,
-  pendulumAngle: 0.75,
+  cartPosition: 0,
+  pendulumAngle: 0,
 };
 
 interface SyncOptions {

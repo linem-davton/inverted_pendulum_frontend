@@ -12,9 +12,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { LogEntry } from "../types/simulator";
+import type { LogEntry, SimData } from "../types/simulator";
 
 interface ChartsProps {
+  fallbackState: SimData;
   logData: LogEntry[];
 }
 
@@ -52,6 +53,12 @@ const SETTLING_THRESHOLD_RATIO = 0.02;
 const MIN_SETTLING_BAND = 0.01;
 const MIN_ERROR_AXIS_EXTENT = 0.1;
 const ERROR_AXIS_PADDING_RATIO = 0.15;
+const SINGLE_POINT_TIME_PADDING = 1;
+const highlightedDotProps = {
+  r: 4,
+  stroke: "#071017",
+  strokeWidth: 2,
+};
 
 function formatMetric(value: number, digits = 3) {
   return Number.isFinite(value) ? value.toFixed(digits) : "--";
@@ -83,6 +90,31 @@ function formatCompactSeconds(value: number) {
   return `${formatMetric(value, value < 10 ? 2 : 1)} s`;
 }
 
+function createFallbackLogEntry(fallbackState: SimData): LogEntry {
+  return {
+    time: fallbackState.time,
+    x: fallbackState.cartPosition,
+    theta: fallbackState.pendulumAngle,
+    force: 0,
+    theta_dot_dot: 0,
+    ref: 0,
+  };
+}
+
+function getTimeDomain(logData: LogEntry[]): [number, number] {
+  const minTime = logData[0]?.time ?? 0;
+  const maxTime = logData[logData.length - 1]?.time ?? minTime;
+
+  if (minTime === maxTime) {
+    return [
+      minTime - SINGLE_POINT_TIME_PADDING,
+      maxTime + SINGLE_POINT_TIME_PADDING,
+    ];
+  }
+
+  return [minTime, maxTime];
+}
+
 /**
  * Analyze the latest commanded reference step using the error signal.
  *
@@ -92,7 +124,7 @@ function formatCompactSeconds(value: number) {
  *   a +-2% band of the initial step error magnitude.
  */
 function analyzeResponse(logData: LogEntry[]): ResponseAnalysis | null {
-  if (logData.length < 2) {
+  if (logData.length === 0) {
     return null;
   }
 
@@ -106,7 +138,7 @@ function analyzeResponse(logData: LogEntry[]): ResponseAnalysis | null {
 
   const responseWindow = logData.slice(stepStartIndex);
 
-  if (responseWindow.length < 2) {
+  if (responseWindow.length === 0) {
     return null;
   }
 
@@ -252,9 +284,8 @@ function TelemetryTooltip({
 }
 
 function ForceChart({ logData }: { logData: LogEntry[] }) {
-  const latestLog = logData[logData.length - 1];
-  const minTime = logData[0].time;
-  const maxTime = latestLog.time;
+  const [minTime, maxTime] = getTimeDomain(logData);
+  const shouldRenderDots = logData.length === 1;
 
   return (
     <article className="chartCard">
@@ -343,12 +374,14 @@ function ForceChart({ logData }: { logData: LogEntry[] }) {
               strokeWidth={2.8}
               strokeLinecap="round"
               isAnimationActive={false}
-              dot={false}
+              dot={
+                shouldRenderDots
+                  ? { ...highlightedDotProps, fill: forceColor }
+                  : false
+              }
               activeDot={{
-                r: 4,
+                ...highlightedDotProps,
                 fill: forceColor,
-                stroke: "#071017",
-                strokeWidth: 2,
               }}
             />
             <Line
@@ -360,12 +393,14 @@ function ForceChart({ logData }: { logData: LogEntry[] }) {
               strokeWidth={2.8}
               strokeLinecap="round"
               isAnimationActive={false}
-              dot={false}
+              dot={
+                shouldRenderDots
+                  ? { ...highlightedDotProps, fill: thetaColor }
+                  : false
+              }
               activeDot={{
-                r: 4,
+                ...highlightedDotProps,
                 fill: thetaColor,
-                stroke: "#071017",
-                strokeWidth: 2,
               }}
             />
           </LineChart>
@@ -382,9 +417,7 @@ function ErrorResponseChart({ logData }: { logData: LogEntry[] }) {
     return null;
   }
 
-  const latestPoint = analysis.data[analysis.data.length - 1];
-  const minTime = analysis.data[0].time;
-  const maxTime = latestPoint.time;
+  const [minTime, maxTime] = getTimeDomain(analysis.data);
   const maxAbsError = analysis.data.reduce((largestError, point) => {
     return Math.max(largestError, Math.abs(point.error));
   }, 0);
@@ -393,6 +426,7 @@ function ErrorResponseChart({ logData }: { logData: LogEntry[] }) {
     analysis.settlingBand ?? 0,
     MIN_ERROR_AXIS_EXTENT,
   );
+  const shouldRenderDots = analysis.data.length === 1;
 
   return (
     <article className="chartCard">
@@ -514,12 +548,14 @@ function ErrorResponseChart({ logData }: { logData: LogEntry[] }) {
               strokeWidth={2.8}
               strokeLinecap="round"
               isAnimationActive={false}
-              dot={false}
+              dot={
+                shouldRenderDots
+                  ? { ...highlightedDotProps, fill: errorColor }
+                  : false
+              }
               activeDot={{
-                r: 4,
+                ...highlightedDotProps,
                 fill: errorColor,
-                stroke: "#071017",
-                strokeWidth: 2,
               }}
             />
           </LineChart>
@@ -529,20 +565,15 @@ function ErrorResponseChart({ logData }: { logData: LogEntry[] }) {
   );
 }
 
-const Charts = memo(function Charts({ logData }: ChartsProps) {
-  if (logData.length === 0) {
-    return (
-      <article className="chartEmptyCard chartEmptyCard--minimal">
-        <span className="chartEmptyLabel">No telemetry yet</span>
-      </article>
-    );
-  }
+const Charts = memo(function Charts({ fallbackState, logData }: ChartsProps) {
+  const chartData =
+    logData.length > 0 ? logData : [createFallbackLogEntry(fallbackState)];
 
   return (
     <div className="telemetryInsights">
       <div className="chartStack">
-        <ForceChart logData={logData} />
-        <ErrorResponseChart logData={logData} />
+        <ForceChart logData={chartData} />
+        <ErrorResponseChart logData={chartData} />
       </div>
     </div>
   );

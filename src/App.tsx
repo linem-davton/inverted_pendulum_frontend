@@ -325,7 +325,7 @@ function App() {
             </section>
 
             <section className="telemetryDeck telemetryDeck--inline">
-              <Charts logData={logData} />
+              <Charts fallbackState={simData} logData={logData} />
             </section>
           </section>
 
