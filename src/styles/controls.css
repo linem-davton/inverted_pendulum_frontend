@@ -1,0 +1,358 @@
+.controlGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  margin-top: 1.2rem;
+}
+
+.controlGroup {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1rem 1.1rem;
+  border-radius: var(--radius-soft);
+  border: 1px solid rgba(89, 211, 255, 0.14);
+  background: rgba(7, 16, 23, 0.34);
+}
+
+.controlGroup--pid {
+  background:
+    radial-gradient(circle at top right, rgba(89, 211, 255, 0.08), transparent 28%),
+    rgba(7, 16, 23, 0.38);
+}
+
+.controlGroup--disturbance {
+  background:
+    radial-gradient(circle at top right, rgba(255, 122, 26, 0.08), transparent 28%),
+    rgba(7, 16, 23, 0.38);
+}
+
+.controlGroupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.controlGroupHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.controlIcon {
+  position: relative;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(89, 211, 255, 0.16);
+  background: rgba(7, 16, 23, 0.52);
+}
+
+.controlIcon::before,
+.controlIcon::after {
+  content: "";
+  position: absolute;
+}
+
+.controlIcon--pid::before {
+  left: 0.48rem;
+  right: 0.48rem;
+  bottom: 0.45rem;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: rgba(89, 211, 255, 0.3);
+}
+
+.controlIcon--pid::after {
+  inset: 0.45rem 0.52rem 0.62rem;
+  background:
+    linear-gradient(180deg, transparent 15%, var(--accent-secondary) 15% 100%) left / 0.18rem 70% no-repeat,
+    linear-gradient(180deg, transparent 35%, var(--accent-primary-soft) 35% 100%) center / 0.18rem 100% no-repeat,
+    linear-gradient(180deg, transparent 5%, var(--accent-secondary) 5% 100%) right / 0.18rem 55% no-repeat;
+}
+
+.controlIcon--disturbance::before {
+  inset: 0.5rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 35%, var(--accent-primary-soft) 0 0.18rem, transparent 0.2rem),
+    radial-gradient(circle at 70% 65%, var(--accent-secondary) 0 0.18rem, transparent 0.2rem),
+    linear-gradient(135deg, transparent 44%, rgba(255, 255, 255, 0.14) 44% 56%, transparent 56%);
+}
+
+.controlGroupTitle {
+  margin: 0.3rem 0 0;
+  font-size: 1.05rem;
+}
+
+.groupMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.parameterGrid {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.parameterCard {
+  padding: 0.95rem 1rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(89, 211, 255, 0.12);
+  background: rgba(7, 16, 23, 0.52);
+}
+
+.parameterCard--primary {
+  border-color: rgba(255, 122, 26, 0.16);
+}
+
+.parameterHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.parameterLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.parameterIcon {
+  position: relative;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(89, 211, 255, 0.12);
+  background: rgba(7, 16, 23, 0.5);
+}
+
+.parameterIcon::before,
+.parameterIcon::after {
+  content: "";
+  position: absolute;
+}
+
+.parameterIcon--kp::after {
+  left: 0.98rem;
+  top: 0.44rem;
+  width: 0.2rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  background: var(--accent-primary-soft);
+  box-shadow: 0 0 0 0.12rem rgba(255, 154, 77, 0.14);
+}
+
+.parameterIcon--kp::before {
+  inset: 0.34rem;
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 0.07rem),
+      rgba(89, 211, 255, 0.24) calc(50% - 0.07rem),
+      rgba(89, 211, 255, 0.24) calc(50% + 0.07rem),
+      transparent calc(50% + 0.07rem)
+    ),
+    linear-gradient(
+      0deg,
+      transparent calc(50% - 0.07rem),
+      rgba(89, 211, 255, 0.16) calc(50% - 0.07rem),
+      rgba(89, 211, 255, 0.16) calc(50% + 0.07rem),
+      transparent calc(50% + 0.07rem)
+    );
+}
+
+.parameterIcon--kd::after {
+  right: 0.3rem;
+  top: 0.34rem;
+  width: 0.34rem;
+  height: 0.34rem;
+  border-top: 0.12rem solid var(--accent-primary-soft);
+  border-right: 0.12rem solid var(--accent-primary-soft);
+  border-radius: 0 0.08rem 0 0;
+  transform: rotate(6deg);
+}
+
+.parameterIcon--ki::before {
+  left: 0.42rem;
+  right: 0.42rem;
+  top: 0.34rem;
+  bottom: 0.34rem;
+  border-radius: 0.18rem;
+  border: 1px solid rgba(89, 211, 255, 0.22);
+  background: linear-gradient(180deg, rgba(7, 16, 23, 0.08), rgba(7, 16, 23, 0.24));
+}
+
+.parameterIcon--ki::after {
+  left: 0.52rem;
+  right: 0.52rem;
+  top: 0.48rem;
+  bottom: 0.48rem;
+  background:
+    linear-gradient(180deg, transparent 0 16%, rgba(255, 154, 77, 0.12) 16% 20%, transparent 20% 42%, rgba(89, 211, 255, 0.18) 42% 46%, transparent 46% 68%, rgba(89, 211, 255, 0.24) 68% 72%, var(--accent-secondary) 72% 100%);
+}
+
+.parameterIcon--kd::before {
+  left: 0.38rem;
+  right: 0.38rem;
+  top: 0.76rem;
+  height: 0.14rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary-soft));
+  transform: rotate(-32deg);
+  transform-origin: center;
+}
+
+.parameterIcon--ref::before {
+  inset: 0.34rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 122, 26, 0.5);
+}
+
+.parameterIcon--ref::after {
+  left: 0.74rem;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  width: 0.14rem;
+  border-radius: 999px;
+  background: var(--accent-primary-soft);
+}
+
+.parameterIcon--delay::before {
+  inset: 0.36rem;
+  border-radius: 999px;
+  border: 1px solid rgba(89, 211, 255, 0.35);
+}
+
+.parameterIcon--delay::after {
+  left: 0.78rem;
+  top: 0.46rem;
+  width: 0.14rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--accent-secondary);
+  transform-origin: bottom center;
+  transform: rotate(28deg);
+}
+
+.parameterIcon--jitter::before {
+  left: 0.38rem;
+  right: 0.38rem;
+  top: 0.48rem;
+  bottom: 0.48rem;
+  background:
+    linear-gradient(135deg, transparent 18%, var(--accent-primary-soft) 18% 34%, transparent 34% 50%, var(--accent-secondary) 50% 66%, transparent 66%);
+}
+
+.parameterLabel {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.parameterReadout {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.parameterValue {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+}
+
+.parameterCard--primary .parameterValue {
+  color: var(--accent-primary-soft);
+}
+
+.parameterCard--secondary .parameterValue {
+  color: var(--accent-secondary);
+}
+
+.parameterUnit,
+.parameterBounds {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+
+.parameterBounds {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.parameterRangeButton {
+  padding: 0.16rem 0.48rem;
+  border: 1px solid rgba(89, 211, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(7, 16, 23, 0.42);
+  color: rgba(214, 227, 236, 0.8);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.parameterRangeButton:hover:not(:disabled) {
+  border-color: rgba(89, 211, 255, 0.26);
+  background: rgba(10, 23, 32, 0.68);
+  color: rgba(239, 245, 249, 0.94);
+}
+
+.parameterRangeButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.parameterControlRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8.5rem;
+  gap: 0.85rem;
+  align-items: center;
+  margin-top: 0.85rem;
+}
+
+.groupActionRow {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .controlGroupHeader,
+  .parameterHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .parameterControlRow {
+    grid-template-columns: 1fr;
+  }
+
+  .parameterControlRow .MuiTextField-root {
+    width: 100% !important;
+  }
+}

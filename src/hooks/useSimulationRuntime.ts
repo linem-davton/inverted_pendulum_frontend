@@ -51,9 +51,9 @@ function isSameSimData(previousData: SimData, nextData: SimData) {
   );
 }
 
-function toLogEntry(sample: SimulationSample): LogEntry {
+function toLogEntry(sample: SimulationSample, normalizedTime: number): LogEntry {
   return {
-    time: sample.time,
+    time: normalizedTime,
     x: sample.x,
     theta: sample.theta,
     force: sample.force,
@@ -62,9 +62,9 @@ function toLogEntry(sample: SimulationSample): LogEntry {
   };
 }
 
-function toSimData(sample: SimulationSample): SimData {
+function toSimData(sample: SimulationSample, normalizedTime: number): SimData {
   return {
-    time: sample.time,
+    time: normalizedTime,
     cartPosition: sample.x,
     pendulumAngle: sample.theta,
   };
@@ -91,6 +91,7 @@ export function useSimulationRuntime({
   const clientRef = useRef(createSimulatorClient(server));
   const startedRef = useRef(started);
   const pausedRef = useRef(paused);
+  const timeOriginRef = useRef<number | null>(null);
   const fetchDurationRef = useRef(fetchDuration);
   const pollOnceRef = useRef<() => Promise<void>>(async () => {});
   const syncRuntimeRef = useRef<(options?: SyncOptions) => Promise<void>>(
@@ -135,8 +136,13 @@ export function useSimulationRuntime({
   };
 
   const applySample = (sample: SimulationSample, resetLog = false) => {
-    const nextSimData = toSimData(sample);
-    const nextLogEntry = toLogEntry(sample);
+    if (resetLog || timeOriginRef.current === null) {
+      timeOriginRef.current = sample.time;
+    }
+
+    const normalizedTime = Math.max(sample.time - timeOriginRef.current, 0);
+    const nextSimData = toSimData(sample, normalizedTime);
+    const nextLogEntry = toLogEntry(sample, normalizedTime);
 
     setSimData((previousSimData) => {
       return isSameSimData(previousSimData, nextSimData)
@@ -254,13 +260,26 @@ export function useSimulationRuntime({
 
   useEffect(() => {
     fetchDurationRef.current = fetchDuration;
-    scheduleNextPoll(fetchDuration);
+
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (!startedRef.current || pausedRef.current) {
+      return;
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
+      void pollOnceRef.current();
+    }, fetchDuration);
   }, [fetchDuration]);
 
   useEffect(() => {
     clientRef.current = createSimulatorClient(server);
     clearScheduledPoll();
     abortActiveRequest();
+    timeOriginRef.current = null;
     setSimData(INITIAL_SIM_DATA);
     setLogData([]);
     applyStatus({ start: false, pause: true });

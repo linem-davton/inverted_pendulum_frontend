@@ -77,12 +77,6 @@ function App() {
   });
 
   const latestLog = logData.length > 0 ? logData[logData.length - 1] : null;
-  const statusTone = !started ? "idle" : paused ? "paused" : "live";
-  const statusLabel = !started
-    ? "Idle"
-    : paused
-      ? "Paused"
-      : "Live";
   const connectionLabel = server === "remote" ? "Remote" : "Local";
   const actionErrorMessage =
     actionErrorServer === null
@@ -218,22 +212,32 @@ function App() {
           <section className="topBarUtilities topBarUtilities--compact">
             <div className="consoleToolbar">
               <div className="consoleToolbarMain">
-                <span className={`statusPill statusPill--${statusTone}`}>
-                  {statusLabel}
-                </span>
                 <button
                   type="button"
-                  className={`toolbarAction toolbarAction--toggle ${
-                    server === "local" ? "toolbarAction--active" : ""
-                  }`}
+                  className={`toolbarSwitch toolbarSwitch--${server}`}
                   onClick={() => {
                     setServer((previousServer) => {
                       return previousServer === "remote" ? "local" : "remote";
                     });
                   }}
-                  aria-pressed={server === "local"}
+                  aria-label={`Server target: ${connectionLabel}. Click to switch to ${
+                    server === "local" ? "Remote" : "Local"
+                  }.`}
                 >
-                  {connectionLabel}
+                  <span
+                    className={`toolbarSwitchOption ${
+                      server === "local" ? "toolbarSwitchOption--active" : ""
+                    }`}
+                  >
+                    Local
+                  </span>
+                  <span
+                    className={`toolbarSwitchOption ${
+                      server === "remote" ? "toolbarSwitchOption--active" : ""
+                    }`}
+                  >
+                    Remote
+                  </span>
                 </button>
                 <label className="toolbarField">
                   <input
