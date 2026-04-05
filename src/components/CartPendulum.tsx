@@ -417,17 +417,28 @@ function drawScene(
   motion: MotionState,
 ) {
   const { width, height } = size;
-  const railInset = clamp(width * 0.11, 26, 76);
+  const railInset = 0;
   const cartWidth = clamp(width * 0.17, 88, 138);
   const cartHeight = cartWidth * 0.38;
   const wheelRadius = clamp(cartWidth * 0.14, 10, 18);
-  const wheelY = height * 0.74;
-  const railY = wheelY + wheelRadius * 1.1;
+  const railToPivotOffset = wheelRadius * 1.58 + cartHeight * 0.86;
+  const pivotYTarget = height * 0.46;
+  const railY = pivotYTarget + railToPivotOffset;
+  const wheelY = railY - wheelRadius * 1.1;
   const bodyBottom = wheelY - wheelRadius * 0.48;
   const bodyTop = bodyBottom - cartHeight;
-  const rodLength = clamp(height * 0.36, 88, 176);
   const bobRadius = clamp(wheelRadius * 0.9, 9, 15);
   const pivotY = bodyTop + cartHeight * 0.14;
+  const pendulumClearance = bobRadius * 1.9 + 8;
+  const rodLength = Math.max(
+    72,
+    Math.min(
+      height * 0.44,
+      pivotY - pendulumClearance,
+      height - pivotY - pendulumClearance,
+      190,
+    ),
+  );
   const pixelsPerUnit = Math.min(width * 0.17, 110);
   const desiredCartX = width / 2 + motion.cartPosition * pixelsPerUnit;
   const cartX = clamp(
