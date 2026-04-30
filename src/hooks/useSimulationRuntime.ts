@@ -10,22 +10,12 @@ import type {
 } from "../types/simulator";
 
 const MAX_LOG_POINTS = 1200;
-const PASSIVE_SYNC_INTERVAL_MS = 750;
 
 const INITIAL_SIM_DATA: SimData = {
   time: 0,
   cartPosition: 0,
   pendulumAngle: 0,
 };
-
-interface SyncOptions {
-  resetLog?: boolean;
-  throwOnError?: boolean;
-}
-
-function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === "AbortError";
-}
 
 function isSameLogEntry(
   previousEntry: LogEntry | undefined,
@@ -74,11 +64,9 @@ function toSimData(sample: SimulationSample, normalizedTime: number): SimData {
 
 export function useSimulationRuntime({
   server,
-  fetchDuration,
   onActionError,
 }: {
   server: ServerTarget;
-  fetchDuration: number;
   onActionError?: (error: unknown) => void;
 }) {
   const [simData, setSimData] = useState<SimData>(INITIAL_SIM_DATA);
@@ -87,57 +75,10 @@ export function useSimulationRuntime({
   const [started, setStarted] = useState(false);
 
   const mountedRef = useRef(true);
-  const fetchInFlightRef = useRef(false);
-  const timeoutRef = useRef<number | null>(null);
-  const requestAbortRef = useRef<AbortController | null>(null);
   const clientRef = useRef(createSimulatorClient(server));
   const startedRef = useRef(started);
   const pausedRef = useRef(paused);
   const timeOriginRef = useRef<number | null>(null);
-  const fetchDurationRef = useRef(fetchDuration);
-  const pollOnceRef = useRef<() => Promise<void>>(async () => {});
-  const syncRuntimeRef = useRef<(options?: SyncOptions) => Promise<void>>(
-    async () => {},
-  );
-
-  const clearScheduledPoll = useCallback(() => {
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-  }, []);
-
-  const abortActiveRequest = useCallback(() => {
-    requestAbortRef.current?.abort();
-    requestAbortRef.current = null;
-    fetchInFlightRef.current = false;
-  }, []);
-
-  const scheduleNextPoll = useCallback(
-    (delay = fetchDurationRef.current, passive = false) => {
-      clearScheduledPoll();
-
-      if (!passive && (!startedRef.current || pausedRef.current)) {
-        return;
-      }
-
-      timeoutRef.current = window.setTimeout(() => {
-        void pollOnceRef.current();
-      }, delay);
-    },
-    [clearScheduledPoll],
-  );
-
-  const scheduleFromSnapshot = useCallback(
-    (snapshot: SimulationSnapshot) => {
-      if (snapshot.status.start && !snapshot.status.pause) {
-        scheduleNextPoll(fetchDurationRef.current);
-      } else {
-        scheduleNextPoll(PASSIVE_SYNC_INTERVAL_MS, true);
-      }
-    },
-    [scheduleNextPoll],
-  );
 
   const applyStatus = useCallback((status: SimulationStatus) => {
     startedRef.current = status.start;
@@ -195,111 +136,9 @@ export function useSimulationRuntime({
     [applySample, applyStatus],
   );
 
-  pollOnceRef.current = async () => {
-    if (fetchInFlightRef.current) {
-      return;
-    }
-
-    clearScheduledPoll();
-    fetchInFlightRef.current = true;
-
-    const controller = new AbortController();
-    requestAbortRef.current = controller;
-
-    try {
-      const snapshot = await clientRef.current.getSnapshot(controller.signal);
-
-      if (!mountedRef.current || controller.signal.aborted) {
-        return;
-      }
-
-      applySnapshot(snapshot);
-
-      if (!snapshot.status.start || snapshot.status.pause) {
-        pausedRef.current = true;
-        setPaused((previousPaused) => {
-          return previousPaused === snapshot.status.pause
-            ? previousPaused
-            : snapshot.status.pause;
-        });
-        scheduleNextPoll(PASSIVE_SYNC_INTERVAL_MS, true);
-        return;
-      }
-
-      scheduleNextPoll();
-    } catch (error) {
-      if (!isAbortError(error)) {
-        clearScheduledPoll();
-        console.error("Failed to poll simulator state:", error);
-      }
-    } finally {
-      if (requestAbortRef.current === controller) {
-        requestAbortRef.current = null;
-      }
-      fetchInFlightRef.current = false;
-    }
-  };
-
-  syncRuntimeRef.current = async (options?: SyncOptions) => {
-    const resetLog = options?.resetLog ?? false;
-    const throwOnError = options?.throwOnError ?? false;
-
-    clearScheduledPoll();
-    abortActiveRequest();
-
-    const controller = new AbortController();
-    requestAbortRef.current = controller;
-
-    try {
-      const snapshot = await clientRef.current.getSnapshot(controller.signal);
-
-      if (!mountedRef.current || controller.signal.aborted) {
-        return;
-      }
-
-      applySnapshot(snapshot, resetLog);
-
-      scheduleFromSnapshot(snapshot);
-    } catch (error) {
-      if (!isAbortError(error)) {
-        clearScheduledPoll();
-        console.error("Failed to synchronize simulator state:", error);
-        if (throwOnError) {
-          throw error;
-        }
-      }
-    } finally {
-      if (requestAbortRef.current === controller) {
-        requestAbortRef.current = null;
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchDurationRef.current = fetchDuration;
-
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    if (!startedRef.current || pausedRef.current) {
-      timeoutRef.current = window.setTimeout(() => {
-        void pollOnceRef.current();
-      }, PASSIVE_SYNC_INTERVAL_MS);
-      return;
-    }
-
-    timeoutRef.current = window.setTimeout(() => {
-      void pollOnceRef.current();
-    }, fetchDuration);
-  }, [clearScheduledPoll, fetchDuration]);
-
   useEffect(() => {
     const client = createSimulatorClient(server);
     clientRef.current = client;
-    clearScheduledPoll();
-    abortActiveRequest();
     timeOriginRef.current = null;
     setSimData(INITIAL_SIM_DATA);
     setLogData([]);
@@ -311,39 +150,24 @@ export function useSimulationRuntime({
       }
 
       applySnapshot(snapshot);
-
-      scheduleFromSnapshot(snapshot);
     });
-
-    void syncRuntimeRef.current({ resetLog: true });
 
     return () => {
       unsubscribe();
     };
-  }, [
-    abortActiveRequest,
-    applySnapshot,
-    applyStatus,
-    clearScheduledPoll,
-    scheduleFromSnapshot,
-    scheduleNextPoll,
-    server,
-  ]);
+  }, [applySnapshot, applyStatus, server]);
 
   useEffect(() => {
     mountedRef.current = true;
 
     return () => {
       mountedRef.current = false;
-      clearScheduledPoll();
-      abortActiveRequest();
     };
-  }, [abortActiveRequest, clearScheduledPoll]);
+  }, []);
 
   const startSimulation = async () => {
     try {
       await clientRef.current.toggleStartStop();
-      await syncRuntimeRef.current({ throwOnError: true });
     } catch (error) {
       console.error("Failed to start simulation:", error);
       onActionError?.(error);
@@ -353,7 +177,6 @@ export function useSimulationRuntime({
   const toggleSimulation = async () => {
     try {
       await clientRef.current.toggleStartStop();
-      await syncRuntimeRef.current({ throwOnError: true });
     } catch (error) {
       console.error("Failed to toggle simulation:", error);
       onActionError?.(error);
@@ -363,7 +186,6 @@ export function useSimulationRuntime({
   const restartSimulation = async () => {
     try {
       await clientRef.current.reset();
-      await syncRuntimeRef.current({ resetLog: true, throwOnError: true });
     } catch (error) {
       console.error("Failed to restart simulation:", error);
       onActionError?.(error);

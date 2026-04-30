@@ -99,56 +99,6 @@
   color: rgba(244, 248, 250, 0.98);
 }
 
-.toolbarField {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 32px;
-  padding: 0.16rem 0.22rem 0.16rem 0.5rem;
-  border: 1px solid rgba(89, 211, 255, 0.16);
-  border-radius: var(--radius-pill);
-  background: rgba(7, 16, 23, 0.42);
-}
-
-.toolbarField:focus-within {
-  border-color: rgba(89, 211, 255, 0.28);
-  background: rgba(10, 23, 32, 0.72);
-}
-
-.toolbarInput {
-  width: 4.2ch;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  text-align: right;
-  text-transform: uppercase;
-}
-
-.toolbarInput::-webkit-outer-spin-button,
-.toolbarInput::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.toolbarInput[type="number"] {
-  -moz-appearance: textfield;
-}
-
-.toolbarInputUnit {
-  padding: 0.18rem 0.28rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .consoleToolbarLinks {
   display: flex;
   align-items: center;

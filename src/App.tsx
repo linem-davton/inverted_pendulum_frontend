@@ -15,9 +15,6 @@ import { useSimulationRuntime } from "./hooks/useSimulationRuntime";
 import appTheme from "./theme";
 import type { ServerTarget } from "./types/simulator";
 
-const MIN_FETCH_DURATION = 50;
-const MAX_FETCH_DURATION = 1000;
-
 const PROJECT_LINKS = [
   {
     label: "Frontend",
@@ -50,8 +47,6 @@ function isInteractiveHotkeyTarget(target: EventTarget | null) {
 }
 
 function App() {
-  const [fetchDuration, setFetchDuration] = useState(300);
-  const [fetchDurationInput, setFetchDurationInput] = useState("300");
   const [actionErrorServer, setActionErrorServer] = useState<ServerTarget | null>(
     null,
   );
@@ -69,7 +64,6 @@ function App() {
     started,
     toggleSimulation,
   } = useSimulationRuntime({
-    fetchDuration,
     onActionError: () => {
       setActionErrorServer(server);
     },
@@ -112,7 +106,6 @@ function App() {
     },
   ];
 
-  const parsedFetchDuration = Number(fetchDurationInput.trim());
   const handleRunAction = () => {
     if (started) {
       void toggleSimulation();
@@ -125,31 +118,9 @@ function App() {
     void restartSimulation();
   };
 
-  const applyFetchDuration = () => {
-    if (
-      fetchDurationInput.trim() === "" ||
-      !Number.isFinite(parsedFetchDuration)
-    ) {
-      setFetchDurationInput(String(fetchDuration));
-      return;
-    }
-
-    const nextDuration = Math.min(
-      MAX_FETCH_DURATION,
-      Math.max(MIN_FETCH_DURATION, Math.round(parsedFetchDuration)),
-    );
-
-    setFetchDuration(nextDuration);
-    setFetchDurationInput(String(nextDuration));
-  };
-
   useEffect(() => {
     localStorage.setItem("serverUrl", server);
   }, [server]);
-
-  useEffect(() => {
-    setFetchDurationInput(String(fetchDuration));
-  }, [fetchDuration]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -239,27 +210,6 @@ function App() {
                     Remote
                   </span>
                 </button>
-                <label className="toolbarField">
-                  <input
-                    className="toolbarInput"
-                    type="number"
-                    min={MIN_FETCH_DURATION}
-                    max={MAX_FETCH_DURATION}
-                    step={10}
-                    value={fetchDurationInput}
-                    onChange={(event) => {
-                      setFetchDurationInput(event.target.value);
-                    }}
-                    onBlur={applyFetchDuration}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        applyFetchDuration();
-                      }
-                    }}
-                    aria-label="WebSocket sync interval in milliseconds"
-                  />
-                  <span className="toolbarInputUnit">ms</span>
-                </label>
               </div>
               <nav className="consoleToolbarLinks" aria-label="Project links">
                 <div className="consoleToolbarReferences">

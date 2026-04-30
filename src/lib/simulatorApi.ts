@@ -9,12 +9,11 @@ import type {
   SimulationStatus,
 } from "../types/simulator";
 
-const REQUEST_TIMEOUT_MS = 5000;
+const SUBSCRIPTION_RECONNECT_MS = 1000;
 
 type SnapshotListener = (snapshot: SimulationSnapshot) => void;
 
 type ClientCommand =
-  | { type: "getSnapshot" }
   | { type: "setPid"; pid: PidConfig }
   | { type: "setParams"; params: DisturbanceConfig }
   | { type: "reset" }
@@ -32,15 +31,6 @@ interface ServerMessage {
 }
 
 type SnapshotMessage = ServerMessage & SimulationSnapshot;
-
-interface PendingRequest {
-  abortHandler?: () => void;
-  reject: (error: unknown) => void;
-  resolve: (value: unknown) => void;
-  signal?: AbortSignal;
-  timeoutId: number;
-  transform: (message: ServerMessage) => unknown;
-}
 
 export function getServerUrl(server: ServerTarget) {
   return server === "remote" ? config.remoteServer : config.localServer;
@@ -64,7 +54,7 @@ function isSnapshotMessage(message: ServerMessage): message is SnapshotMessage {
   return Boolean(message.sample && message.status && message.pid && message.params);
 }
 
-function expectSnapshot(message: ServerMessage) {
+function toSnapshot(message: ServerMessage) {
   if (!isSnapshotMessage(message)) {
     throw new Error("WebSocket response did not include a simulator snapshot");
   }
@@ -81,65 +71,41 @@ function expectSnapshot(message: ServerMessage) {
 class WebSocketSimulatorClient {
   private connectionPromise: Promise<WebSocket> | null = null;
   private listeners = new Set<SnapshotListener>();
-  private pending = new Map<string, PendingRequest>();
-  private requestCounter = 0;
+  private reconnectTimeoutId: number | null = null;
   private socket: WebSocket | null = null;
 
   constructor(private readonly server: ServerTarget) {}
 
   subscribe(listener: SnapshotListener) {
     this.listeners.add(listener);
+    this.openForSubscriptions();
 
     return () => {
       this.listeners.delete(listener);
+
+      if (this.listeners.size === 0) {
+        this.clearReconnectTimer();
+      }
     };
   }
 
-  getSnapshot(signal?: AbortSignal) {
-    return this.sendCommand({ type: "getSnapshot" }, expectSnapshot, signal);
-  }
-
-  async getStatus(signal?: AbortSignal) {
-    const snapshot = await this.getSnapshot(signal);
-    return snapshot.status;
-  }
-
-  async getSample(signal?: AbortSignal) {
-    const snapshot = await this.getSnapshot(signal);
-    return snapshot.sample;
-  }
-
-  async getPid(signal?: AbortSignal) {
-    const snapshot = await this.getSnapshot(signal);
-    return snapshot.pid;
-  }
-
   async setPid(pid: PidConfig, signal?: AbortSignal) {
-    await this.sendCommand({ type: "setPid", pid }, expectSnapshot, signal);
-  }
-
-  async getParams(signal?: AbortSignal) {
-    const snapshot = await this.getSnapshot(signal);
-    return snapshot.params;
+    await this.sendCommand({ type: "setPid", pid }, signal);
   }
 
   async setParams(params: DisturbanceConfig, signal?: AbortSignal) {
-    await this.sendCommand({ type: "setParams", params }, expectSnapshot, signal);
+    await this.sendCommand({ type: "setParams", params }, signal);
   }
 
   async reset(signal?: AbortSignal) {
-    await this.sendCommand({ type: "reset" }, expectSnapshot, signal);
+    await this.sendCommand({ type: "reset" }, signal);
   }
 
   async toggleStartStop(signal?: AbortSignal) {
-    await this.sendCommand({ type: "toggleStartStop" }, expectSnapshot, signal);
+    await this.sendCommand({ type: "toggleStartStop" }, signal);
   }
 
-  private async sendCommand<T>(
-    command: ClientCommand,
-    transform: (message: ServerMessage) => T,
-    signal?: AbortSignal,
-  ) {
+  private async sendCommand(command: ClientCommand, signal?: AbortSignal) {
     if (signal?.aborted) {
       throw createAbortError();
     }
@@ -150,45 +116,7 @@ class WebSocketSimulatorClient {
       throw createAbortError();
     }
 
-    return new Promise<T>((resolve, reject) => {
-      const id = `${Date.now()}-${this.requestCounter}`;
-      this.requestCounter += 1;
-
-      const timeoutId = window.setTimeout(() => {
-        this.removePending(id);
-        reject(new Error("WebSocket request timed out"));
-      }, REQUEST_TIMEOUT_MS);
-
-      const abortSignal = signal;
-      const abortHandler = abortSignal
-        ? () => {
-            this.removePending(id);
-            reject(createAbortError());
-          }
-        : undefined;
-
-      if (abortHandler && abortSignal) {
-        abortSignal.addEventListener("abort", abortHandler, { once: true });
-      }
-
-      this.pending.set(id, {
-        abortHandler,
-        reject,
-        resolve: (value) => {
-          resolve(value as T);
-        },
-        signal,
-        timeoutId,
-        transform,
-      });
-
-      try {
-        socket.send(JSON.stringify({ ...command, id }));
-      } catch (error) {
-        this.removePending(id);
-        reject(error);
-      }
-    });
+    socket.send(JSON.stringify(command));
   }
 
   private ensureSocket() {
@@ -211,6 +139,7 @@ class WebSocketSimulatorClient {
       const handleOpen = () => {
         cleanup();
         this.connectionPromise = null;
+        this.clearReconnectTimer();
         resolve(socket);
       };
       const handleError = () => {
@@ -232,10 +161,37 @@ class WebSocketSimulatorClient {
         this.socket = null;
       }
       this.connectionPromise = null;
-      this.rejectPending(new Error("WebSocket connection closed"));
+      this.scheduleReconnect();
     });
 
     return this.connectionPromise;
+  }
+
+  private openForSubscriptions() {
+    void this.ensureSocket().catch((error) => {
+      console.error("Failed to connect to simulator WebSocket:", error);
+      this.scheduleReconnect();
+    });
+  }
+
+  private scheduleReconnect() {
+    if (this.listeners.size === 0 || this.reconnectTimeoutId !== null) {
+      return;
+    }
+
+    this.reconnectTimeoutId = window.setTimeout(() => {
+      this.reconnectTimeoutId = null;
+      this.openForSubscriptions();
+    }, SUBSCRIPTION_RECONNECT_MS);
+  }
+
+  private clearReconnectTimer() {
+    if (this.reconnectTimeoutId === null) {
+      return;
+    }
+
+    window.clearTimeout(this.reconnectTimeoutId);
+    this.reconnectTimeoutId = null;
   }
 
   private handleMessage(event: MessageEvent) {
@@ -249,59 +205,18 @@ class WebSocketSimulatorClient {
     }
 
     if (isSnapshotMessage(message)) {
-      this.emitSnapshot(expectSnapshot(message));
-    }
-
-    if (!message.id) {
+      this.emitSnapshot(toSnapshot(message));
       return;
     }
-
-    const pending = this.pending.get(message.id);
-
-    if (!pending) {
-      return;
-    }
-
-    this.removePending(message.id);
 
     if (message.type === "error") {
-      pending.reject(new Error(message.message ?? "Simulator WebSocket error"));
-      return;
-    }
-
-    try {
-      pending.resolve(pending.transform(message));
-    } catch (error) {
-      pending.reject(error);
+      console.error(message.message ?? "Simulator WebSocket error");
     }
   }
 
   private emitSnapshot(snapshot: SimulationSnapshot) {
     this.listeners.forEach((listener) => {
       listener(snapshot);
-    });
-  }
-
-  private removePending(id: string) {
-    const pending = this.pending.get(id);
-
-    if (!pending) {
-      return;
-    }
-
-    window.clearTimeout(pending.timeoutId);
-
-    if (pending.abortHandler && pending.signal) {
-      pending.signal.removeEventListener("abort", pending.abortHandler);
-    }
-
-    this.pending.delete(id);
-  }
-
-  private rejectPending(error: Error) {
-    this.pending.forEach((pending, id) => {
-      this.removePending(id);
-      pending.reject(error);
     });
   }
 }

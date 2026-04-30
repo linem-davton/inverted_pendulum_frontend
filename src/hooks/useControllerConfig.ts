@@ -22,8 +22,6 @@ import type {
   SimulationSnapshot,
 } from "../types/simulator";
 
-const CONTROL_SYNC_INTERVAL_MS = 750;
-
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
@@ -56,9 +54,6 @@ export function useControllerConfig({ server }: { server: ServerTarget }) {
   const disturbanceTimerRef = useRef<number | null>(null);
   const pidRequestRef = useRef<AbortController | null>(null);
   const disturbanceRequestRef = useRef<AbortController | null>(null);
-  const hydrateRequestRef = useRef<AbortController | null>(null);
-  const syncRequestRef = useRef<AbortController | null>(null);
-  const syncTimerRef = useRef<number | null>(null);
   const lastSubmittedPidRef = useRef<PidConfig>({
     kp: controllerDefaults.kp,
     ki: controllerDefaults.ki,
@@ -80,11 +75,8 @@ export function useControllerConfig({ server }: { server: ServerTarget }) {
   }, []);
 
   const applyRemoteSnapshot = useCallback(
-    (
-      snapshot: SimulationSnapshot,
-      { force = false }: { force?: boolean } = {},
-    ) => {
-      if (!force && hasPendingLocalUpdate()) {
+    (snapshot: SimulationSnapshot) => {
+      if (!snapshot.event && hasPendingLocalUpdate()) {
         return;
       }
 
@@ -190,11 +182,8 @@ export function useControllerConfig({ server }: { server: ServerTarget }) {
 
     clearTimer(pidTimerRef);
     clearTimer(disturbanceTimerRef);
-    clearTimer(syncTimerRef);
     abortRequest(pidRequestRef);
     abortRequest(disturbanceRequestRef);
-    abortRequest(hydrateRequestRef);
-    abortRequest(syncRequestRef);
 
     const unsubscribe = clientRef.current.subscribe((snapshot) => {
       if (!isCurrent) {
@@ -204,74 +193,15 @@ export function useControllerConfig({ server }: { server: ServerTarget }) {
       applyRemoteSnapshot(snapshot);
     });
 
-    const controllerAbort = new AbortController();
-    hydrateRequestRef.current = controllerAbort;
-
-    const hydrateControls = async () => {
-      try {
-        const snapshot = await clientRef.current.getSnapshot(
-          controllerAbort.signal,
-        );
-
-        if (controllerAbort.signal.aborted) {
-          return;
-        }
-
-        applyRemoteSnapshot(snapshot, { force: true });
-      } catch (error) {
-        if (!isAbortError(error)) {
-          console.warn("Falling back to default controller values:", error);
-        }
-      } finally {
-        if (hydrateRequestRef.current === controllerAbort) {
-          hydrateRequestRef.current = null;
-        }
-        if (isCurrent) {
-          hydratedRef.current = true;
-        }
-      }
-    };
-
-    void hydrateControls();
-
-    syncTimerRef.current = window.setInterval(() => {
-      if (
-        !hydratedRef.current ||
-        hasPendingLocalUpdate() ||
-        syncRequestRef.current !== null
-      ) {
-        return;
-      }
-
-      const syncAbort = new AbortController();
-      syncRequestRef.current = syncAbort;
-
-      void clientRef.current
-        .getSnapshot(syncAbort.signal)
-        .catch((error) => {
-          if (!isAbortError(error)) {
-            console.warn("Failed to refresh controller values:", error);
-          }
-        })
-        .finally(() => {
-          if (syncRequestRef.current === syncAbort) {
-            syncRequestRef.current = null;
-          }
-        });
-    }, CONTROL_SYNC_INTERVAL_MS);
-
     return () => {
       isCurrent = false;
       unsubscribe();
       clearTimer(pidTimerRef);
       clearTimer(disturbanceTimerRef);
-      clearTimer(syncTimerRef);
       abortRequest(pidRequestRef);
       abortRequest(disturbanceRequestRef);
-      abortRequest(hydrateRequestRef);
-      abortRequest(syncRequestRef);
     };
-  }, [applyRemoteSnapshot, hasPendingLocalUpdate, server]);
+  }, [applyRemoteSnapshot, server]);
 
   useEffect(() => {
     if (!hydratedRef.current) {
