@@ -141,7 +141,7 @@ function ControllerSliders({ server }: { server: ServerTarget }) {
           </div>
 
           <div className="groupMeta">
-            <span className="stageBadge">/pid</span>
+            <span className="stageBadge">ws:pid</span>
           </div>
         </div>
 
@@ -176,7 +176,7 @@ function ControllerSliders({ server }: { server: ServerTarget }) {
           </div>
 
           <div className="groupMeta">
-            <span className="stageBadge">/params</span>
+            <span className="stageBadge">ws:params</span>
           </div>
         </div>
 

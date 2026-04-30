@@ -1,4 +1,5 @@
 export type ServerTarget = "local" | "remote";
+export type SimulationSnapshotEvent = "pid" | "params" | "reset" | "startstop";
 
 export interface SimData {
   time: number;
@@ -41,3 +42,11 @@ export interface DisturbanceConfig {
 }
 
 export interface ControllerState extends PidConfig, DisturbanceConfig {}
+
+export interface SimulationSnapshot {
+  event?: SimulationSnapshotEvent;
+  sample: SimulationSample;
+  status: SimulationStatus;
+  pid: PidConfig;
+  params: DisturbanceConfig;
+}

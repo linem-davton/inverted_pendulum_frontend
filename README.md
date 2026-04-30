@@ -1,6 +1,6 @@
 # Inverted Pendulum Frontend
 
-This project is a React-based frontend for controlling an inverted pendulum simulation. It communicates with a backend server whose configuration is defined in `config.json`.
+This project is a React-based frontend for controlling an inverted pendulum simulation. It communicates with a backend WebSocket server whose configuration is defined in `config.json`.
 
 ## Features
 
@@ -22,7 +22,7 @@ The response annotations on the `Error vs Time` chart use the latest detected re
 - **Rise time**: the time for the absolute error to fall from `90%` to `10%` of the initial step error.
 - **Settling time**: the first time the absolute error enters and then stays within a `+-2%` band of the initial step error magnitude.
 
-These metrics are computed from the frontend telemetry buffer, so their time resolution depends on the current polling interval.
+These metrics are computed from the frontend telemetry buffer, so their time resolution depends on the current WebSocket sync interval.
 
 ## Getting Started
 

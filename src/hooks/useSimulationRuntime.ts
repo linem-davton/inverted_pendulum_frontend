@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createSimulatorClient } from "../lib/simulatorApi";
 import type {
   LogEntry,
   ServerTarget,
   SimData,
   SimulationSample,
+  SimulationSnapshot,
   SimulationStatus,
 } from "../types/simulator";
 
 const MAX_LOG_POINTS = 1200;
+const PASSIVE_SYNC_INTERVAL_MS = 750;
 
 const INITIAL_SIM_DATA: SimData = {
   time: 0,
@@ -98,32 +100,46 @@ export function useSimulationRuntime({
     async () => {},
   );
 
-  const clearScheduledPoll = () => {
+  const clearScheduledPoll = useCallback(() => {
     if (timeoutRef.current !== null) {
       window.clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-  };
+  }, []);
 
-  const abortActiveRequest = () => {
+  const abortActiveRequest = useCallback(() => {
     requestAbortRef.current?.abort();
     requestAbortRef.current = null;
     fetchInFlightRef.current = false;
-  };
+  }, []);
 
-  const scheduleNextPoll = (delay = fetchDurationRef.current) => {
-    clearScheduledPoll();
+  const scheduleNextPoll = useCallback(
+    (delay = fetchDurationRef.current, passive = false) => {
+      clearScheduledPoll();
 
-    if (!startedRef.current || pausedRef.current) {
-      return;
-    }
+      if (!passive && (!startedRef.current || pausedRef.current)) {
+        return;
+      }
 
-    timeoutRef.current = window.setTimeout(() => {
-      void pollOnceRef.current();
-    }, delay);
-  };
+      timeoutRef.current = window.setTimeout(() => {
+        void pollOnceRef.current();
+      }, delay);
+    },
+    [clearScheduledPoll],
+  );
 
-  const applyStatus = (status: SimulationStatus) => {
+  const scheduleFromSnapshot = useCallback(
+    (snapshot: SimulationSnapshot) => {
+      if (snapshot.status.start && !snapshot.status.pause) {
+        scheduleNextPoll(fetchDurationRef.current);
+      } else {
+        scheduleNextPoll(PASSIVE_SYNC_INTERVAL_MS, true);
+      }
+    },
+    [scheduleNextPoll],
+  );
+
+  const applyStatus = useCallback((status: SimulationStatus) => {
     startedRef.current = status.start;
     pausedRef.current = status.pause;
 
@@ -133,40 +149,51 @@ export function useSimulationRuntime({
     setPaused((previousPaused) => {
       return previousPaused === status.pause ? previousPaused : status.pause;
     });
-  };
+  }, []);
 
-  const applySample = (sample: SimulationSample, resetLog = false) => {
-    if (resetLog || timeOriginRef.current === null) {
-      timeOriginRef.current = sample.time;
-    }
-
-    const normalizedTime = Math.max(sample.time - timeOriginRef.current, 0);
-    const nextSimData = toSimData(sample, normalizedTime);
-    const nextLogEntry = toLogEntry(sample, normalizedTime);
-
-    setSimData((previousSimData) => {
-      return isSameSimData(previousSimData, nextSimData)
-        ? previousSimData
-        : nextSimData;
-    });
-
-    setLogData((previousLogData) => {
-      const baseLog = resetLog ? [] : previousLogData;
-
-      if (isSameLogEntry(baseLog[baseLog.length - 1], nextLogEntry)) {
-        return baseLog;
+  const applySample = useCallback(
+    (sample: SimulationSample, resetLog = false) => {
+      if (resetLog || timeOriginRef.current === null) {
+        timeOriginRef.current = sample.time;
       }
 
-      return [...baseLog, nextLogEntry].slice(-MAX_LOG_POINTS);
-    });
+      const normalizedTime = Math.max(sample.time - timeOriginRef.current, 0);
+      const nextSimData = toSimData(sample, normalizedTime);
+      const nextLogEntry = toLogEntry(sample, normalizedTime);
 
-    if (sample.pause !== pausedRef.current) {
-      pausedRef.current = sample.pause;
-      setPaused((previousPaused) => {
-        return previousPaused === sample.pause ? previousPaused : sample.pause;
+      setSimData((previousSimData) => {
+        return isSameSimData(previousSimData, nextSimData)
+          ? previousSimData
+          : nextSimData;
       });
-    }
-  };
+
+      setLogData((previousLogData) => {
+        const baseLog = resetLog ? [] : previousLogData;
+
+        if (isSameLogEntry(baseLog[baseLog.length - 1], nextLogEntry)) {
+          return baseLog;
+        }
+
+        return [...baseLog, nextLogEntry].slice(-MAX_LOG_POINTS);
+      });
+
+      if (sample.pause !== pausedRef.current) {
+        pausedRef.current = sample.pause;
+        setPaused((previousPaused) => {
+          return previousPaused === sample.pause ? previousPaused : sample.pause;
+        });
+      }
+    },
+    [],
+  );
+
+  const applySnapshot = useCallback(
+    (snapshot: SimulationSnapshot, resetLog = false) => {
+      applyStatus(snapshot.status);
+      applySample(snapshot.sample, resetLog || snapshot.event === "reset");
+    },
+    [applySample, applyStatus],
+  );
 
   pollOnceRef.current = async () => {
     if (fetchInFlightRef.current) {
@@ -180,20 +207,22 @@ export function useSimulationRuntime({
     requestAbortRef.current = controller;
 
     try {
-      const sample = await clientRef.current.getSample(controller.signal);
+      const snapshot = await clientRef.current.getSnapshot(controller.signal);
 
       if (!mountedRef.current || controller.signal.aborted) {
         return;
       }
 
-      applySample(sample);
+      applySnapshot(snapshot);
 
-      if (sample.pause) {
+      if (!snapshot.status.start || snapshot.status.pause) {
         pausedRef.current = true;
         setPaused((previousPaused) => {
-          return previousPaused ? previousPaused : true;
+          return previousPaused === snapshot.status.pause
+            ? previousPaused
+            : snapshot.status.pause;
         });
-        clearScheduledPoll();
+        scheduleNextPoll(PASSIVE_SYNC_INTERVAL_MS, true);
         return;
       }
 
@@ -222,27 +251,15 @@ export function useSimulationRuntime({
     requestAbortRef.current = controller;
 
     try {
-      const status = await clientRef.current.getStatus(controller.signal);
+      const snapshot = await clientRef.current.getSnapshot(controller.signal);
 
       if (!mountedRef.current || controller.signal.aborted) {
         return;
       }
 
-      applyStatus(status);
+      applySnapshot(snapshot, resetLog);
 
-      const sample = await clientRef.current.getSample(controller.signal);
-
-      if (!mountedRef.current || controller.signal.aborted) {
-        return;
-      }
-
-      applySample(sample, resetLog);
-
-      if (status.start && !status.pause) {
-        scheduleNextPoll(fetchDurationRef.current);
-      } else {
-        clearScheduledPoll();
-      }
+      scheduleFromSnapshot(snapshot);
     } catch (error) {
       if (!isAbortError(error)) {
         clearScheduledPoll();
@@ -267,24 +284,51 @@ export function useSimulationRuntime({
     }
 
     if (!startedRef.current || pausedRef.current) {
+      timeoutRef.current = window.setTimeout(() => {
+        void pollOnceRef.current();
+      }, PASSIVE_SYNC_INTERVAL_MS);
       return;
     }
 
     timeoutRef.current = window.setTimeout(() => {
       void pollOnceRef.current();
     }, fetchDuration);
-  }, [fetchDuration]);
+  }, [clearScheduledPoll, fetchDuration]);
 
   useEffect(() => {
-    clientRef.current = createSimulatorClient(server);
+    const client = createSimulatorClient(server);
+    clientRef.current = client;
     clearScheduledPoll();
     abortActiveRequest();
     timeOriginRef.current = null;
     setSimData(INITIAL_SIM_DATA);
     setLogData([]);
     applyStatus({ start: false, pause: true });
+
+    const unsubscribe = client.subscribe((snapshot) => {
+      if (!mountedRef.current) {
+        return;
+      }
+
+      applySnapshot(snapshot);
+
+      scheduleFromSnapshot(snapshot);
+    });
+
     void syncRuntimeRef.current({ resetLog: true });
-  }, [server]);
+
+    return () => {
+      unsubscribe();
+    };
+  }, [
+    abortActiveRequest,
+    applySnapshot,
+    applyStatus,
+    clearScheduledPoll,
+    scheduleFromSnapshot,
+    scheduleNextPoll,
+    server,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -294,7 +338,7 @@ export function useSimulationRuntime({
       clearScheduledPoll();
       abortActiveRequest();
     };
-  }, []);
+  }, [abortActiveRequest, clearScheduledPoll]);
 
   const startSimulation = async () => {
     try {

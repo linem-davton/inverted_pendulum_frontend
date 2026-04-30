@@ -27,6 +27,7 @@ interface ChartsProps {
 const thetaColor = "#ff9a4d";
 const forceColor = "#59d3ff";
 const errorColor = "#ff6b57";
+const referenceColor = "#bdf6a0";
 const axisColor = "#93a7b5";
 const axisTextStyle = {
   fill: axisColor,
@@ -273,8 +274,11 @@ function ErrorResponseChart({ logData }: { logData: LogEntry[] }) {
   const maxAbsError = analysis.data.reduce((largestError, point) => {
     return Math.max(largestError, Math.abs(point.error));
   }, 0);
+  const maxAbsReference = analysis.data.reduce((largestReference, point) => {
+    return Math.max(largestReference, Math.abs(point.ref));
+  }, 0);
   const axisExtent = Math.max(
-    maxAbsError * (1 + ERROR_AXIS_PADDING_RATIO),
+    Math.max(maxAbsError, maxAbsReference) * (1 + ERROR_AXIS_PADDING_RATIO),
     analysis.settlingBand ?? 0,
     MIN_ERROR_AXIS_EXTENT,
   );
@@ -413,6 +417,21 @@ function ErrorResponseChart({ logData }: { logData: LogEntry[] }) {
               activeDot={{
                 ...highlightedDotProps,
                 fill: errorColor,
+              }}
+            />
+            <Line
+              type="stepAfter"
+              dataKey="ref"
+              name="Reference"
+              stroke={referenceColor}
+              strokeWidth={2.2}
+              strokeDasharray="8 6"
+              strokeLinecap="round"
+              isAnimationActive={false}
+              dot={false}
+              activeDot={{
+                ...highlightedDotProps,
+                fill: referenceColor,
               }}
             />
           </LineChart>

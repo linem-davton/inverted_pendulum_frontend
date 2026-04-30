@@ -256,7 +256,7 @@ function App() {
                         applyFetchDuration();
                       }
                     }}
-                    aria-label="Polling interval in milliseconds"
+                    aria-label="WebSocket sync interval in milliseconds"
                   />
                   <span className="toolbarInputUnit">ms</span>
                 </label>
